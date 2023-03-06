@@ -1,60 +1,46 @@
 #include "bloat.hpp"
 
-zpl_arena BlobArena {};
-#define allocator zpl_arena_allocator( & BlobArena)
-
-void setup()
-{
-	zpl_arena_init_from_allocator( & BlobArena, zpl_heap(), zpl_megabytes(10) );
-
-	if ( BlobArena.total_size == 0 )
-	{
-		zpl_assert_crash( "Failed to reserve memory for Tests:: BLobArena" );
-	}
-}
-
-void cleanup()
-{
-	zpl_arena_free( & BlobArena);
-}
-
-// Binary formatting for literals is used heavily as that its
-// how the encoding is conveyed in the hardware reference from intel.
+// Octal formatting is used heavily throughout
+// See: https://gist.github.com/seanjensengrey/f971c20d05d4d0efc0781f2f3c0353da
+//      (x86 is an octal machine)
 
 namespace Op
 {
+	ct u8 Mask      = 00210;
+	ct u8 Mask_Low  = 0b11110000;
+	ct u8 Mask_High = 0b00001111;
+	ct u8 Mask_Imme = 0b00111000;
 
 	#define D_Opcodes \
-	D_Entry( mov_88 ) \
-	D_Entry( mov_89 ) \
+		D_Entry( mov_RM_R  ) \
+		D_Entry( mov_Im_RM ) \
+		D_Entry( mov_Im_R  ) \
+		D_Entry( mov_M_Acc ) \
+		D_Entry( mov_Acc_M ) \
+		D_Entry( mov_RM_SR ) \
+		D_Entry( mov_SR_RM ) \
 
 	enum Code : u8
 	{
-		Mask   = 0b11111100,
-		mov_88 = 0b10001000,
-		mov_89 = 0b11000100,
+		mov_RM_R  = 0b10001000,
+		mov_Im_RM = 0b11001100,
+		mov_Im_R  = 0b10110000,
+		mov_M_Acc = 0b10100000,
+		mov_Acc_M = 0b10100010,
+		mov_RM_SR = 0b10001110,
+		mov_SR_RM = 0b10001100
 	};
 
 	char const* str( Code type )
 	{
 		switch ( type )
 		{
-			case mov_88:
-				return "mov_88";
-			case mov_89:
-				return "mov_89";
-		}
+		#define D_Entry( Entry_ )             \
+			case Entry_:                      \
+				return ZPL_STRINGIFY(Entry_); \
 
-		return Msg_Invalid_Value;
-	}
-
-	ct char const* helper_meumonic( Code type )
-	{
-		switch ( type )
-		{
-			case mov_88:
-			case mov_89:
-				return "mov";
+			D_Opcodes
+		#undef D_Entry
 		}
 
 		return Msg_Invalid_Value;
@@ -64,21 +50,14 @@ namespace Op
 	{
 		switch ( type )
 		{
-			case mov_88:
-			case mov_89:
+			case mov_RM_R  : 
+			case mov_Im_RM :
+			case mov_Im_R  :
+			case mov_M_Acc :
+			case mov_Acc_M :
+			case mov_RM_SR :
+			case mov_SR_RM :
 				return "mov";
-		}
-
-		return Msg_Invalid_Value;
-	}
-
-	ct char const* helper_intuitive( Code type )
-	{
-		switch ( type )
-		{
-			case mov_88:
-			case mov_89:
-				return "move";
 		}
 
 		return Msg_Invalid_Value;
@@ -88,8 +67,13 @@ namespace Op
 	{
 		switch ( type )
 		{
-			case mov_88:
-			case mov_89:
+			case mov_RM_R  : 
+			case mov_Im_RM :
+			case mov_Im_R  :
+			case mov_M_Acc :
+			case mov_Acc_M :
+			case mov_RM_SR :
+			case mov_SR_RM :
 				return "move";
 		}
 
@@ -101,9 +85,8 @@ namespace Op
 
 namespace Field
 {
-	// Effective Address offset
 	inline 
-	u8 effective_address( u8 reg )
+	u8 offset_left_reg( u8 reg )
 	{
 		return reg << 3;
 	}
@@ -134,9 +117,10 @@ namespace Field
 	// https://i.imgur.com/9Op8Lnd.png
 	enum Width : u8
 	{
-		Mask_Width = 0b00000001,
-		Width_Byte = 0b00,
-		Width_Word = 0b01,
+		Mask_Width      = 0b00000001,
+		Mask_Width_Imme = 0b00001000,
+		Width_Byte      = 0b00,
+		Width_Word      = 0b01,
 	};
 
 	inline
@@ -184,37 +168,81 @@ namespace Field
 		return Msg_Invalid_Value;
 	}
 
-#if 0
-	ct u8 RegMem_AL        = 0b00000000;
-	ct u8 RegMem_AX        = 0b00000000;
-	ct u8 RegMem_BX_SI     = 0b00000000;
-	ct u8 RegMem_BX_SI_D8  = 0b00000000;
-	ct u8 RegMem_BX_SI_D16 = 0b00000000;
-#endif
+	ct u8 Mask_Memory = 0b00000111;	
+
+	// https://i.imgur.com/Tm5roJu.png
+	enum Memory : u8
+	{
+		Add_BX_SI  = 0b000,
+		Add_BX_DI  = 0b001,
+		Add_BP_SI  = 0b010,
+		Add_BP_DI  = 0b011,
+		Add_SI     = 0b100,
+		Add_DI     = 0b101,
+		Add_Direct = 0b110,
+		Add_BX     = 0b111,
+
+		Num_Memory
+	};
+
+	char const* str_memory( Memory mem )
+	{
+		char const* mem_to_str[Num_Memory] = 
+		{
+			"BX + SI",
+			"BX + DI",
+			"BP + SI",
+			"BP + DI",
+			"SI",
+			"DI",
+			"BP",
+			"BX"
+		};
+
+		return mem_to_str[ mem ];
+	}
+		
+	char const* str_memory_intuitive( Memory mem )
+	{
+		char const* mem_to_str[Num_Memory] = 
+		{
+			"Base.16 + Stack.Index",
+			"Base.16 + Destination.Index",
+			"Stack.Base + Stack.Index",
+			"Stack.Base + Destination.Index",
+			"Stack.Index",
+			"Destination.Index",
+			"Stack.Base",
+			"BX"
+		};
+
+		return mem_to_str[ mem ];
+	}
 }
 
 namespace Register
 {
+	ct u8 Mask_Imme  = 0b00000111;
 	ct u8 Mask_Left  = 0b00111000;
 	ct u8 Mask_Right = 0b00000111;
 
 	#define D_Opcodes \
-	D_Entry( AL ) \
-	D_Entry( CL ) \
-	D_Entry( DL ) \
-	D_Entry( BL ) \
-	D_Entry( AH ) \
-	D_Entry( CH ) \
-	D_Entry( DH ) \
-	D_Entry( BH ) \
-	D_Entry( AX ) \
-	D_Entry( CX ) \
-	D_Entry( DX ) \
-	D_Entry( BX ) \
-	D_Entry( SP ) \
-	D_Entry( BP ) \
-	D_Entry( SI ) \
-	D_Entry( DI ) \
+		D_Entry( AL ) \
+		D_Entry( CL ) \
+		D_Entry( DL ) \
+		D_Entry( BL ) \
+		D_Entry( AH ) \
+		D_Entry( CH ) \
+		D_Entry( DH ) \
+		D_Entry( BH ) \
+		D_Entry( AX ) \
+		D_Entry( CX ) \
+		D_Entry( DX ) \
+		D_Entry( BX ) \
+		D_Entry( SP ) \
+		D_Entry( BP ) \
+		D_Entry( SI ) \
+		D_Entry( DI ) \
 
 	enum Type : u8
 	{
@@ -251,7 +279,7 @@ namespace Register
 			#undef D_Entry
 		};
 	
-		return Type_To_Meumonic[ type + Width * 7 + 1 ];
+		return Type_To_Meumonic[ type + Width * ( 7 + 1 ) ];
 	}
 
 	char const* intuitive( Type type, u8 Width )
@@ -259,38 +287,77 @@ namespace Register
 		static char const* 
 		Type_To_Intuitive[ Num ] = 
 		{
-			"A.Low",
-			"C.Low",
-			"D.Low",
-			"B.Low",
-			"A.High",
-			"C.High",
-			"D.High",
-			"B.High",
-			"A.16",
-			"C.16",
-			"D.16",
-			"B.16",
+			"Accumulator.Low",
+			"Count.Low",
+			"Data.Low",
+			"Base.Low",
+			"Accumulator.High",
+			"Count.High",
+			"Data.High",
+			"Base.High",
+			"Accumulator.16",
+			"Count.16",
+			"Data.16",
+			"Base.16",
 			"Stack.Pointer",
 			"Stack.Base",
 			"Source.Index",
 			"Destination.Index",
 		};
 	
-		return Type_To_Intuitive[ type + Width * 7 + 1 ];
+		return Type_To_Intuitive[ type + Width * ( 7 + 1 ) ];
 	}
 }
 
-// 8086 Instructions are 1 to 6 bytes in length.
+
+struct Octal
+{
+	u8 Low   : 3;
+	u8 High  : 3;
+	u8 Dir   : 1;
+	u8 Write : 1;
+
+	operator u8()
+	{
+		return * cast( u8*, this);
+	}
+};
+
 struct POD_Instruction
 {
-	u8 Byte_1;
-	u8 Byte_2;
-	u8 Byte_3;
-	u8 Byte_4;
-	u8 Byte_5;
-	u8 Byte_6;
+	// 8086 Instructions are 1 to 6 bytes in length.
+	union
+	{
+		u8* Ptr;
+		u8 Byte[6];
 
+		Octal Instr;
+
+		struct 
+		{
+			u8        Pad[2];
+			u16_Split Disp;
+			u16_Split Data;
+		} 
+		EffAddr;
+
+		struct
+		{
+			u8        Pad[1];
+			u16_Split Data;
+		} 
+		Imme;
+
+		struct 
+		{
+			u8 Pad;
+			u16_Split Data;
+		}
+		Addr;
+	};
+
+	// If directly referencing blob data:
+	// Part of next instruction, do not use as stratch memory.
 	u16 Pad;
 };
 
@@ -299,120 +366,232 @@ struct Instruction : public POD_Instruction
 	using Code      = Op::Code;
 	using Direction = Field::Direction;
 	using Mode      = Field::Mode;
+	using Memory    = Field::Memory;
 	using Width     = Field::Width;
 	using Reg       = Register::Type;
 
 	inline
-	Direction direction()
+	Direction get_direction()
 	{
-		Direction 
-		direction = cast(Direction, Byte_1 & Field::Mask_Dir); 
+		Direction direction = cast(Direction, Byte[0] & Field::Mask_Dir); 
 
 		return direction;
 	}
 
 	inline 
-	Mode mode()
+	Mode get_mode()
 	{
-		Mode mode = cast( Mode, Byte_2 & Field::Mask_Mode );
+		Mode mode = cast( Mode, Byte[1] & Field::Mask_Mode );
 
 		return mode;
 	}
 
 	inline
-	Code opcode()
+	Code get_opcode( u8 mask )
 	{
-		Op::Code 
-		opcode = cast( Op::Code, Byte_1 & Op::Mask );
+		Op::Code opcode = cast( Op::Code, Byte[0] & mask );
 
 		return opcode;
 	}
 
 	inline
-	Reg operand_left()
+	Width get_width( u8 mask )
+	{
+		Width width = cast( Width, Byte[0] & mask );
+
+		return width;
+	}
+
+	inline
+	Reg mode_operand_left_reg()
 	{
 		u8 
-		operand  = Byte_2 & Register::Mask_Left;
+		operand   = Byte[1] & Register::Mask_Left;
 		operand >>= 3;
 
 		return cast(Reg, operand);
 	}
 
 	inline
-	Reg operand_right()
+	Reg  mode_operand_right_reg()
 	{
-		u8 operand = Byte_2 & Register::Mask_Right;
+		u8 operand = Byte[1] & Register::Mask_Right;
 
 		return cast( Reg, operand );
 	}
 
-	inline
-	Width width()
-	{
-		Width width = cast( Width, Byte_1 & Field::Mask_Width );
-
-		return width;
-	}
-
-	void dissassemble( zpl_string* result_out )
+	forceinline
+	void dissassemble_mode( char const*& str_operand, Width& width, u8& length )
 	{
 		using namespace Field;
 		using namespace Op;
 		using namespace Register;
 
-		Direction dir = direction();
-		Width width_val = width();
+		switch ( get_mode() )
+		{
+			case Mode_Mem:
+			{
+				Memory operand_right = cast( Memory, Byte[1] & Mask_Memory );
 
-		char const* opcode_str        = Op::meumonic( opcode() );
-		char const* direction_str     = Field::str_direction( dir );
-		char const* width_str         = Field::str_width( width_val );
-		char const* mode_str          = Field::str_mode( mode() );
-		char const* operand_left_str  = Register::meumonic( operand_left(), width_val );
-		char const* operand_right_str = Register::meumonic( operand_right(), width_val );
+				length += 2;
 
-		char
-		binary_string[9];
-		binary_string[8] = '\0';
+				if ( operand_right == Add_Direct )
+				{
+					u16 address = EffAddr.Disp;
 
-	#if Build_Debug
-		str_binary( binary_string, opcode() );
-		zpl_printf("\nOpcode     : %s : %s", binary_string, opcode_str);
+					str_operand = string_format( "[ %u ]", address );
+				}
+				else
+				{
+					str_operand = str_memory( operand_right );
+				}
+			}
+			break;
 
-		str_binary( binary_string, dir );
-		zpl_printf("\nDirection  : %s : %s", binary_string, direction_str);
+			case Mode_Mem8:
+			{
+				Memory operand_right = cast( Memory, Byte[1] & Mask_Memory );
 
-		str_binary( binary_string, width_val );
-		zpl_printf("\nWidth      : %s : %s", binary_string, width_str);
+				length += 1;
 
-		str_binary( binary_string, mode() );
-		zpl_printf("\nMode       : %s : %s", binary_string, mode_str);
+				str_operand = string_format( "[ %s + %u ]", str_memory( operand_right), EffAddr.Disp.Low );
+			}
+			break;
 
-		str_binary( binary_string, operand_left() );
-		zpl_printf("\nOperand    : %s : %s", binary_string, operand_left_str);
+			case Mode_Mem16:
+			{
+				length += 2;
 
-		str_binary( binary_string, operand_right() );
-		zpl_printf("\nOperand EA : %s : %s", binary_string, operand_right_str);
-	#endif 
+				Memory operand_right = cast( Memory, Byte[1] & Mask_Memory );
+				u16    address       = EffAddr.Disp;
 
-		if ( result_out == nullptr )
-			return;
+				str_operand = string_format( "[ %s + %u ]", str_memory( operand_right), address );
+			}
+			break;
 
-		if ( * result_out == nullptr )
-			* result_out = zpl_string_make_reserve( allocator, zpl_kilobytes(1) );
+			case Mode_Reg:
+				str_operand = Register::meumonic( mode_operand_right_reg(), width );
+			break;
+		}
+	}
 
-		zpl_string assembly = zpl_string_make_reserve( allocator, 32);
+	u8 dissassemble( zpl_string* result_out )
+	{
+		using namespace Field;
+		using namespace Op;
+		using namespace Register;
 
-		assembly = zpl_string_sprintf( allocator, assembly, zpl_kilobytes(1) - 1, "\n%s %s, %s"
-			, opcode_str
-			, dir == Dir_Src ? operand_right_str : operand_left_str
-			, dir == Dir_Src ? operand_left_str  : operand_right_str
+		u8 length = 1;
+
+		zpl_string assembly = string_make( 32);
+
+		Code      code = get_opcode( Op::Mask );
+		Direction dir  = get_direction();
+
+		char const* str_operand_left  = nullptr;
+		char const* str_operand_right = nullptr;
+
+		const u8 code_low  = Byte[0] & Op::Mask_Low;
+		const u8 code_high = Byte[0] & Op::Mask_High;
+		const u8 sig_imme  = Byte[0] & Op::Mask_Imme;
+
+		if ( get_opcode( Op::Mask_Low ) == mov_Im_R )
+		{
+			Width width     = get_width( Mask_Width_Imme );
+			Reg   reg       = cast(Reg, Byte[0] & Register::Mask_Right );
+			u16   immediate = width == Width_Byte ? 
+				Imme.Data.Low : Imme.Data;
+
+			str_operand_left  = Register::meumonic( reg, width );
+			str_operand_right = string_format( "%u", immediate );
+		}
+		else
+		{
+			switch ( code )
+			{
+			#pragma region mov
+				case mov_RM_R:
+				{
+					length++;
+
+					Width width = get_width( Mask_Width );
+
+					str_operand_left = Register::meumonic( mode_operand_left_reg(), width );
+					
+					dissassemble_mode( str_operand_right, width, length );
+				}
+				break;
+
+				case mov_Im_RM:
+				{
+					Width width = get_width( Mask_Width_Imme );
+
+					Memory operand_left = cast( Memory, Byte[1] & Mask_Memory );
+					u16    address      = EffAddr.Disp;
+					u16    immediate    = width == Width_Byte ?
+						EffAddr.Data.Low : EffAddr.Data;
+
+					dissassemble_mode( str_operand_left, width, length );
+
+					str_operand_right = string_format( "%u", immediate );
+				}
+				break;
+
+				case mov_M_Acc:
+				{
+					Width width   = get_width( Mask_Width );
+					u16   address = width == Width_Byte ? 
+						Addr.Data.Low : Addr.Data;
+
+					str_operand_left  = Register::meumonic( Reg::AX, Width_Word );
+					str_operand_right = string_format( "%u", address );
+				}
+				break;
+
+				case mov_Acc_M:
+				{
+					Width width   = get_width( Mask_Width );
+					u16   address = width == Width_Byte ? 
+						Addr.Data.Low : Addr.Data;
+
+					str_operand_right = string_format( "%u", address );
+					str_operand_left  = Register::meumonic( Reg::AX, Width_Word );
+				}
+				break;
+
+				case mov_RM_SR:
+				{
+					
+				}
+				break;
+
+				case mov_SR_RM:
+				{
+
+				}
+				break;
+			#pragma endregion mov
+			}
+		}
+
+		assembly = string_format( assembly, 32, "\n%s %s, %s"
+			// opcode operand_right, operand_left
+			, Op::meumonic( code)
+			, str_operand_right
+			, str_operand_left
 		);
 
-		* result_out = zpl_string_append( * result_out, assembly );
+		if ( result_out == nullptr )
+			return length;
 
-	#if Build_Debug
+		if ( * result_out == nullptr )
+			* result_out = string_make( zpl_kilobytes(1) );
+
+		* result_out = string_append( * result_out, assembly );
+
 		zpl_printf("\n\nAssembly: %s\n\n", assembly);
-	#endif
+
+		return length;
 	}
 };
 
@@ -426,14 +605,14 @@ namespace Tests
 
 		Instruction
 		mock; // mov CX, BX
-		mock.Byte_1 = mov_88           | Dir_Src               | Field::Width_Word;
-		mock.Byte_2 = Field::Mode_Reg  | effective_address(BX) | CX;
+		mock.Byte[0] = mov_RM_R         | Dir_Src             | Field::Width_Word;
+		mock.Byte[1] = Field::Mode_Reg  | offset_left_reg(BX) | CX;
 
 		zpl_printf("\n\nAttempting Mock Instruction: mov CX, BX");
 
 		print_nl();
-		print_as_binary( & mock.Byte_1, 1, " " );
-		print_as_binary( & mock.Byte_2, 1, " " );
+		print_as_binary( & mock.Byte[0], 1, " " );
+		print_as_binary( & mock.Byte[1], 1, " " );
 		print_nl();
 
 		zpl_string dissasembly = nullptr;
@@ -441,12 +620,12 @@ namespace Tests
 		mock.dissassemble( & dissasembly);
 	}
 
-	void try_blob_single_instruction()
+	void try_blob_single_move()
 	{
 		zpl_printf("\n\nAttempting to read blob: listing_0037_single_register_mov");
 
 		zpl_file_contents 
-		blob = zpl_file_read_contents( allocator, false, "tests/listing_0037_single_register_mov" );
+		blob = zpl_file_read_contents( g_allocator, false, "tests/listing_0037_single_register_mov" );
 
 		if (blob.data == nullptr )
 			return;
@@ -462,17 +641,17 @@ namespace Tests
 
 		Instruction
 		instr;
-		instr.Byte_1 = data[0];
-		instr.Byte_2 = data[1];
+		instr.Byte[0] = data[0];
+		instr.Byte[1] = data[1];
 		instr.dissassemble( & dissasembly);
 	}
 
-	void try_blob_many_instructions()
+	void try_blob_many_moves()
 	{
 		zpl_printf("\n\nAttempting to read blob: listing_0038_many_register_mov");
 
 		zpl_file_contents 
-		blob = zpl_file_read_contents( allocator, false, "tests/listing_0038_many_register_mov" );
+		blob = zpl_file_read_contents( g_allocator, false, "tests/listing_0038_many_register_mov" );
 
 		if (blob.data == nullptr )
 				return;
@@ -484,14 +663,14 @@ namespace Tests
 		print_as_binary( data, left, " " );
 		print_nl();
 
-		zpl_string dissasembly = zpl_string_make( allocator, "bits 16\n");
+		zpl_string dissasembly = string_make( "bits 16\n");
 
 		while ( left )
 		{
 			Instruction
 			instr;
-			instr.Byte_1 = data[0];
-			instr.Byte_2 = data[1];
+			instr.Byte[0] = data[0];
+			instr.Byte[1] = data[1];
 			instr.dissassemble( & dissasembly);
 
 			data += 2;
@@ -509,7 +688,47 @@ namespace Tests
 		);
 	}
 
-	#undef allocator
+	void try_blob_more_moves()
+	{
+		zpl_printf("\n\nAttempting to read blob: listing_0039_more_movs");
+
+		zpl_file_contents 
+		blob = zpl_file_read_contents( g_allocator, false, "tests/listing_0039_more_movs" );
+
+		if (blob.data == nullptr )
+				return;
+
+		u32 left = blob.size;
+		u8* data = cast( u8*, blob.data );
+
+		print_nl();
+		print_as_binary( data, left, " " );
+		print_nl();
+
+		zpl_string dissasembly = string_make( "bits 16\n");
+
+		while ( left )
+		{
+			Instruction 
+			instr;
+			instr.Ptr = data;
+
+			u8 length = instr.dissassemble( & dissasembly);
+
+			data += length;
+			left -= length;
+		}
+
+		zpl_printf("\n\nDissassemlby:\n%s", dissasembly);
+		dissasembly = zpl_string_append_fmt( dissasembly, "\n" );
+
+		zpl_printf("\n\nSaving to file");
+		zpl_file_write_contents("tests/listing_0039_more_movs.asm.out.asm"
+			, dissasembly
+			, zpl_string_length(dissasembly)
+			, nullptr
+		);
+	}
 }
 
 
@@ -519,16 +738,14 @@ int main()
 
 	setup();
 	
-	zpl_f64 start = zpl_time_rel();
+	f64 start = zpl_time_rel();
 
-#if 0
-	Tests::try_mock_instruction();
-	Tests::try_blob_single_instruction();
-#endif
-	Tests::try_blob_many_instructions();
+	// Tests::try_blob_single_move();
+	// Tests::try_blob_many_moves();
+	Tests::try_blob_more_moves();
 
-	zpl_f64 end = zpl_time_rel();
-	zpl_f64 ms  = (end - start) * 100;
+	f64 end = zpl_time_rel();
+	f64 ms  = (end - start) * 100;
 
 	printf("\n\nElapsed Time: %lf ms", ms);
 	printf("\n\n");
