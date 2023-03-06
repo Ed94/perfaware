@@ -1,6 +1,8 @@
 {
 	"files.associations": {
 		"*.rmd": "markdown",
-		"zpl.h": "c"
+		"zpl.h": "c",
+		"cstddef": "cpp",
+		"xtr1common": "cpp"
 	}
 }
