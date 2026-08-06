@@ -194,7 +194,8 @@ typedef Struct_(Str8Gen) { UTF8* ptr; U8 cap, len; };
 FI_ Slice str8gen_buf(Str8Gen_R gen) { return (Slice){u8_(gen->ptr) + gen->len, gen->cap - gen->len}; }
 
 FI_ void str8gen_append_str8(Str8Gen_R gen, Str8 str) { assert(gen != nullptr);
-	U8 ptr = mem_bump_u8(u8_(gen->ptr), gen->cap, & gen->len, str.len).ptr;
+	mem_bump_u8(u8_(gen->ptr), gen->cap, & gen->len, str.len);
+	U8 ptr = u8_(gen->ptr) + gen->len;
 	mem_copy(ptr, u8_(str.ptr), str.len);
 }
 FI_ void str8gen_append_fmt(Str8Gen_R gen, Str8 fmt, KTL_Str8 tbl) {
