@@ -257,12 +257,3 @@ FI_ B8 add_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_saddll_overflow(a, b, 
 FI_ B8 sub_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_ssubll_overflow(a, b, res); }
 FI_ B8 mul_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_smulll_overflow(a, b, res); }
 #pragma endregion Math
-
-#pragma region Debug
-#define debug_trap() __builtin_debugtrap()
-#if BUILD_DEBUG
-FI_ void assert(U8 cond) { if(cond){return;} else{debug_trap(); ms_exit_process(1);} }
-#else
-#define assert(cond)
-#endif
-#pragma endregion Debug

@@ -151,3 +151,8 @@ enum {
 
 	MS_VK_SHIFT =0x10,
 };
+
+
+#if BUILD_DEBUG
+FI_ void assert(U8 cond) { if(cond){return;} else{debug_trap(); ms_exit_process(1);} }
+#endif

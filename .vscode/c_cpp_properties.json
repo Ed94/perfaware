@@ -3,9 +3,10 @@
         {
             "name": "The Usual (clang)",
             "includePath": [
-                "${workspaceFolder}/8086",
-                "${workspaceFolder}/duffle",
-                "${workspaceFolder}/part_1"
+                "${workspaceFolder}/code/",
+                "${workspaceFolder}/code/8086",
+                "${workspaceFolder}/code/duffle",
+                "${workspaceFolder}/code/part_1"
             ],
             "defines": [
                 "BUILD_DEBUG",
