@@ -9,13 +9,13 @@ Standard: c23
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wswitch"
 #pragma clang diagnostic ignored "-Wuninitialized"
-#pragma comment(lib, "Advapi32.lib")
-#pragma comment(lib, "gdi32.lib")
-#pragma comment(lib, "Kernel32.lib")
-#pragma comment(lib, "msvcrt.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "ucrt.lib")
-#pragma comment(lib, "vcruntime.lib")
+// #pragma comment(lib, "Advapi32.lib")
+// #pragma comment(lib, "gdi32.lib")
+// #pragma comment(lib, "Kernel32.lib")
+// #pragma comment(lib, "msvcrt.lib")
+// #pragma comment(lib, "user32.lib")
+// #pragma comment(lib, "ucrt.lib")
+// #pragma comment(lib, "vcruntime.lib")
 #define WinAPI __attribute((__stdcall__)) __attribute__((__force_align_arg_pointer__)) // Win32 Syscall FFI
 
 #define offset_of(type, member)  cast(U8,__builtin_offsetof(type,member))
