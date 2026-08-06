@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "The Usual (clang)",
+            "includePath": [
+                "${workspaceFolder}/8086",
+                "${workspaceFolder}/duffle",
+                "${workspaceFolder}/part_1"
+            ],
+            "defines": [
+                "BUILD_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "INTELLISENSE_DIRECTIVES"
+            ],
+            "windowsSdkVersion": "10.0.22621.0",
+            "compilerPath": "clang",
+            "cStandard": "c11",
+            "intelliSenseMode": "clang-x64"
+        }
+    ],
+    "version": 4
+}
