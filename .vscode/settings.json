@@ -1,9 +1,0 @@
-{
-	"files.associations": {
-		"*.rmd": "markdown",
-		"zpl.h": "c",
-		"cstddef": "cpp",
-		"xtr1common": "cpp",
-		"*.inline": "cpp"
-	}
-}
