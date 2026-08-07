@@ -68,6 +68,7 @@ typedef Struct_(Str8)         { UTF8* ptr; U8 len; };
 typedef Str8 Slice_UTF8;
 typedef Struct_(Slice_Str8)   { Str8* ptr; U8 len; };
 #define slit8(string_literal) (Str8){ (UTF8*) string_literal, S_(string_literal) - 1 }
+#define str8(p,l) (Str8){p,l}
 
 typedef Struct_(Slice) { U8 ptr; U8 len; }; // Untyped Slice
 FI_ Slice slice_ut_(U8 ptr, U8 len) { return (Slice){ptr, len}; }

@@ -18,6 +18,7 @@ typedef Struct_(R1_U2){ U2 p0; U2 p1; };
 typedef Struct_(R1_U4){ U4 p0; U2 p1; };
 typedef Struct_(R1_U8){ U8 p0; U8 p1; };
 
+#define r1u4(p0,p1) (R1_U4){p0,p1}
 #define r1u8(p0,p1) (R1_U8){p0,p1}
 
 typedef Struct_(V2_U1){ U1 x; U1 y;};
