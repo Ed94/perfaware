@@ -14,4 +14,8 @@
 #else
 	#define assert(cond)
 #endif
+
+#define trap() __builtin_trap()
+
+#define assert_always(x) do { if((x) == false) {trap();} } while(0)
 #pragma endregion Debug

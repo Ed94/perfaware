@@ -2,13 +2,14 @@
 #	pragma once
 #	include "dsl.h"
 #	include "memory.h"
+#	include "encoding.h"
 #	include "hashing.h"
 #	include "tables.h"
 #	include "analysis.h"
 #endif
 
 // NOTE(rjf): Includes reverses for uppercase and lowercase hex.
-RO_ global U8 integer_symbol_reverse[128] = {
+RO_ U8 integer_symbol_reverse[128] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -204,3 +205,30 @@ FI_ void str8gen_append_fmt(Str8Gen_R gen, Str8 fmt, KTL_Str8 tbl) {
 	gen->len += result.len;
 }
 #define str8gen_append_str8_(gen, s) str8gen_append_str8(gen, str8(s))
+
+// Dealing with Wides (UTF16)
+
+typedef U4 UTF16;
+typedef Struct_(Str16) { UTF16* ptr; U8 len; };
+typedef Str16 Slice_UTF16;
+#define str16(p,l) (Str16){p,l}
+
+internal Str16
+str16_from_8(FArena* arena, Str8 in) {
+  Str16 result = {0}; if (in.len) {
+    U8       cap = in.len * 2;
+    Slice_U2 str = farena_push_array(arena, U2, cap + 1);
+    U1* ptr = in.ptr;
+    U1* opl = ptr + in.len;
+    U8 size = 0;
+    UnicodeDecode consume;
+    for(;ptr < opl; ptr += consume.inc)
+    {
+      consume = utf8_decode(ptr, opl - ptr);
+      size   += utf16_encode(str.ptr + size, consume.codepoint);
+    }
+    str.ptr[size] = 0; farena_rewind(arena, (cap - size) * 2);
+    result = str16(C_(UTF16*, str.ptr), size);
+  }
+  return result;
+}

@@ -33,6 +33,11 @@ FI_ U8 mem_copy_overlapping(U8 dest, U8 src,   U8 len) { return (U8)(__builtin_m
 FI_ U8 mem_fill            (U8 dest, U8 value, U8 len) { return (U8)(__builtin_memset ((void*)dest, (int)        value, len)); }
 FI_ B4 mem_zero            (U8 dest,           U8 len) { if(dest == 0){return false;} mem_fill(dest, 0, len); return true; }
 
+FI_ U8 mem_compare(U8 a, U8 b, U8 len) { return (U8)(__builtin_memcmp((void const*)a, (void const*)b, len)); }
+FI_ B4 mem_match  (U8 a, U8 b, U8 z)   { return mem_compare(a, b, z) == 0; }
+
+#define mem_match_struct(a,b)  mem_match(C_(U8,a), C_(U8,b), S_((a)[0]))
+
 #pragma region DAG
 
 #define check_nil(nil, p) ((p) == 0 || (p) == nil)
@@ -68,17 +73,16 @@ typedef Struct_(Slice) { U8 ptr; U8 len; }; // Untyped Slice
 FI_ Slice slice_ut_(U8 ptr, U8 len) { return (Slice){ptr, len}; }
 
 #define Slice_(type)       Struct_(tmpl(Slice,type)) { type* ptr; U8 len; }
-typedef Slice_(B1);
 #define slice_assert(s)    do { assert((s).ptr != 0); assert((s).len > 0); } while(0)
 #define slice_end(slice)   ((slice).ptr + (slice).len)
 #define S_slice(s)         ((s).len * S_((s).ptr[0]))
 
-#define slice_ut(ptr,len)  slice_ut_(u4_(ptr),     u4_(len))
-#define slice_ut_arr(a)    slice_ut_(u4_(a),       S_(a))
-#define slice_to_ut(s)     slice_ut_(u4_((s).ptr), S_slice(s))
+#define slice_ut(ptr,len)  slice_ut_(u8_(ptr),     u8_(len))
+#define slice_ut_arr(a)    slice_ut_(u8_(a),       S_(a))
+#define slice_to_ut(s)     slice_ut_(u8_((s).ptr), S_slice(s))
 
 #define slice_iter(container, iter)     (T_((container).ptr) iter = (container).ptr; iter != slice_end(container); ++ iter)
-#define slice_arg_from_array(type, ...) & (tmpl(Slice,type)) { .ptr = array_decl(type,__VA_ARGS__), .len = array_len( array_decl(type,__VA_ARGS__)) }
+#define slice_arg_from_array(type, ...) & (tmpl(Slice,type)) { .ptr = Array_decl(type,__VA_ARGS__), .len = Array_len( Array_decl(type,__VA_ARGS__)) }
 #define slice_from_array(type, array)     (tmpl(Slice,type)) { .ptr = array, .len = S_(array) }
 
 FI_ void slice_zero_(Slice s) { slice_assert(s); mem_zero(s.ptr, s.len); }
@@ -91,11 +95,15 @@ FI_ void slice_copy_(Slice dest, Slice src) {
 	mem_copy(dest.ptr, src.ptr, src.len);
 }
 #define slice_copy(dest, src) do {  \
-	static_assert(T_same(dest, src)); \
+	static_assert(T_same(dest, src), "slices are not the same type"); \
 	slice_copy_(slice_to_ut(dest), slice_to_ut(src)); \
 } while(0)
 
+typedef Slice_(B1);
+typedef Slice_(U1);
+typedef Slice_(U2);
 typedef Slice_(U4);
+typedef Slice_(U8); 
 
 #pragma endregion Slice
 

@@ -9,6 +9,7 @@ Standard: c23
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wswitch"
 #pragma clang diagnostic ignored "-Wuninitialized"
+#pragma clang diagnostic ignored "-Wmicrosoft-enum-forward-reference"
 // #pragma comment(lib, "Advapi32.lib")
 // #pragma comment(lib, "gdi32.lib")
 // #pragma comment(lib, "Kernel32.lib")
@@ -16,7 +17,18 @@ Standard: c23
 // #pragma comment(lib, "user32.lib")
 // #pragma comment(lib, "ucrt.lib")
 // #pragma comment(lib, "vcruntime.lib")
+
+#pragma region Platform
+#define CLANG_OPTIMIZE_DISABLE _Pragma("clang optimize off")
+#define CLANG_OPTIMIZE_ENABLE  _Pragma("clang optimize on")
+
+#define DUFFLE_x86_64  1
+#define DUFFLE_WINDOWS 1
+
 #define WinAPI __attribute((__stdcall__)) __attribute__((__force_align_arg_pointer__)) // Win32 Syscall FFI
+
+#define os_layer // Marker for interfaced resolved by os platform layer.
+#pragma endregion Platform
 
 #define offset_of(type, member)  cast(U8,__builtin_offsetof(type,member))
 #define static_assert            _Static_assert
@@ -67,7 +79,7 @@ Standard: c23
 
 #define EUB_  restrict // Execute Unit Bound:    Data is siloed in the ALU Register File. The Load/Store Unit is bypassed. (Route to Execution Unit.  Keep in registers)
 #define ISO_  restrict // Isolated Provenance:   Alternative to Exu_. Guarantees electrical memory isolation, 
-                       //                        unlocking the compiler’s ability to safely pack data across multiple parallel SIMD lanes (vectorization).
+											 //                        unlocking the compiler’s ability to safely pack data across multiple parallel SIMD lanes (vectorization).
 #define LSU_  volatile // Load/Store Unit Bound: The compiler is forbidden from caching in registers. Forces physical L1 Cache matrix sampling.
 #define LIVE_ volatile // Live External Data:    Alternative to Lsu_ emphasizing the memory is tapped by an external electrical actor.
 
@@ -107,7 +119,7 @@ Standard: c23
 #define Array_expand(type,len)         type Array_sym(type, len)[len]; typedef PtrSet_(Array_sym(type, len))
 #define Array_(type,len)               Array_expand(type,len)
 #define Bit_(id,b)                     id = (1 << b), tmpl(id,pos) = b
-#define Enum_(underlying_type, symbol) underlying_type TSet_(symbol); enum   symbol
+#define Enum_(underlying_type, symbol) underlying_type TSet_(symbol); enum symbol 
 #define Proc_(symbol)                  symbol
 #define Relative_(symbol)              // Does nothing but annotate that a symbol is associated with another.
 #define Struct_(symbol)                struct symbol   TSet_(symbol); struct symbol
@@ -206,14 +218,17 @@ def_signed_ops(le, <=)
 #define dbg_args(...) __VA_ARGS__
 
 #pragma region Control Flow & Iteration
+#define unreachable() __builtin_unreachable()
+
 #define each_iter(type, iter, end)             (type iter = 0; iter < end; ++ iter)
 #define index_iter(type, iter, begin, op, end) (type iter = begin; iter op end; (begin < end ? ++ iter : -- iter))
 #define range_iter(iter,op,range)              (T_((range).p0) iter = (range).p0; iter op (range).p1; ((range).p0 < (range).p1 ? ++ iter : -- iter))
 
-#define defer(expr)                for(U4         once= 1;                  once!=1;++     once,(expr))    // Basic do something after body
-#define scope(begin,end)           for(U4         once=(1,(begin));         once!=1;++     once,(end ))    // Do things before or after a scope
-#define defer_rewind(cursor)       for(T_(cursor) sp=cursor,once=0;         once!=1;++     once,cursor=sp) // Used with arenas/stacks
-#define defer_info(type,expr, ...) for(type       info= {__VA_ARGS__}; info.once!=1;++info.once,(expr))    // Defer with tracked state
+#define defer(expr)                for(U4         once= 1;                 once!=1;++     once,(expr))    // Basic do something after body
+#define defer_rewind(cursor)       for(T_(cursor) sp=cursor,once=0;        once!=1;++     once,cursor=sp) // Used with arenas/stacks
+#define defer_info(type,expr, ...) for(type       info={__VA_ARGS__}; info.once!=1;++info.once,(expr))    // Defer with tracked state
+#define scope(begin,end)           for(U4         once=(1,(begin));        once!=1;++     once,(end ))    // Do things before or after a scope
+#define scope_info(type,begin,end) for(type       info=begin;         info.once!=1;++info.once,(end ))
 
 #define do_while(cond) for (U4 once=0; once!=1 || (cond); ++once)
 
@@ -225,35 +240,87 @@ def_signed_ops(le, <=)
 	++ iter.cursor                    \
 )
 #define Span_(type)                                                \
-	        Struct_(tmpl(     Span,type)) { type begin; type end; }; \
+					Struct_(tmpl(     Span,type)) { type begin; type end; }; \
 	typedef Struct_(tmpl(Iter_Span,type)) { tmpl(Span,type) r; type cursor; }
 #pragma endregion Control Flow & Iteration
 
 typedef Span_(S4);
 typedef Span_(U4);
 typedef Span_(U8);
+#pragma region Thread Coherence
 
+FI_ void barrier_compiler(void){asm volatile("::""memory");} // Compiler Barrier
+FI_ void barrier_memory  (void){__builtin_ia32_mfence();}    // Memory   Barrier
+FI_ void barrier_read    (void){__builtin_ia32_lfence();}    // Read     Barrier
+FI_ void barrier_write   (void){__builtin_ia32_sfence();}    // Write    Barrier
 
-#pragma region Math
-#define u8_max 0xffffffffffffffffull
+// x86-64
+FI_ U4 atm_add_u4 (U4_R addr, U4 value){asm volatile("lock xaddl %0,%1":"=r"(value),"=m"(addr[0]):"0"(value),"m"(addr[0]):"memory","cc");return value;}
+FI_ U8 atm_add_u8 (U8_R addr, U8 value){asm volatile("lock xaddq %0,%1":"=r"(value),"=m"(addr[0]):"0"(value),"m"(addr[0]):"memory","cc");return value;}
+FI_ U4 atm_swap_u4(U4_R addr, U4 value){asm volatile("lock xchgl %0,%1":"=r"(value),"=m"(addr[0]):"0"(value),"m"(addr[0]):"memory","cc");return value;}
+FI_ U8 atm_swap_u8(U8_R addr, U8 value){asm volatile("lock xchgq %0,%1":"=r"(value),"=m"(addr[0]):"0"(value),"m"(addr[0]):"memory","cc");return value;}
+#pragma endregion Thread Coherence
 
-#define min(A,B)       (((A) < (B)) ? (A) : (B))
-#define max(A,B)       (((A) > (B)) ? (A) : (B))
-#define clamp_bot(X,B) max(X, B) // Clamp "X" by "B"
+#pragma region Misc
+enum {
+	Bitmask_3  = 0x00000007,
+	Bitmask_4  = 0x0000000f,
+	Bitmask_5  = 0x0000001f,
+	Bitmask_6  = 0x0000003f,
+	Bitmask_10 = 0x000003ff,
+};
 
-#define clamp_decrement(X) (((X) > 0) ? ((X) - 1) : 0)
+typedef Enum_(U4, WeekDay) {
+	WeekDay_Sun,
+	WeekDay_Mon,
+	WeekDay_Tue,
+	WeekDay_Wed,
+	WeekDay_Thu,
+	WeekDay_Fri,
+	WeekDay_Sat,
+	WeekDay_Num,
+};
 
-typedef Struct_(R1_U1){ U1 p0; U1 p1; };
-typedef Struct_(R1_U2){ U2 p0; U2 p1; };
-typedef Struct_(R1_U4){ U4 p0; U2 p4; };
-typedef Struct_(R1_U8){ U8 p0; U8 p4; };
+typedef Enum_(U4, Month) {
+	Month_Jan,
+	Month_Feb,
+	Month_Mar,
+	Month_Apr,
+	Month_May,
+	Month_Jun,
+	Month_Jul,
+	Month_Aug,
+	Month_Sep,
+	Month_Oct,
+	Month_Nov,
+	Month_Dec,
+	Month_Num,
+};
 
-typedef Struct_(V2_U1){ U1 x; U1 y;};
+typedef U8 DenseTime;
 
-FI_ B8 add_of  (U8 a, U8 b, U8*R_ res) { return __builtin_uaddll_overflow(a, b, res); }
-FI_ B8 sub_of  (U8 a, U8 b, U8*R_ res) { return __builtin_usubll_overflow(a, b, res); }
-FI_ B8 mul_of  (U8 a, U8 b, U8*R_ res) { return __builtin_umulll_overflow(a, b, res); }
-FI_ B8 add_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_saddll_overflow(a, b, res); }
-FI_ B8 sub_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_ssubll_overflow(a, b, res); }
-FI_ B8 mul_s_of(S8 a, S8 b, S8*R_ res) { return __builtin_smulll_overflow(a, b, res); }
-#pragma endregion Math
+typedef Struct_(DateTime) {
+	U4      micro_sec; // [0,999]
+	U4      msec;      // [0,999]
+	U4      sec;       // [0,60]
+	U4      min;       // [0,59]
+	U4      hour;      // [0,24]
+	U4      day;       // [0,30]
+	WeekDay week_day;
+	Month   month;
+	U4      year; // 1 = 1 CE, 0 = 1 BC
+};
+
+I_ DenseTime
+dense_time_from_date_time(DateTime date_time) {
+  DenseTime result = 0;
+  result += date_time.year;  result *= 12;
+  result += date_time.month; result *= 31;
+  result += date_time.day;   result *= 24;
+  result += date_time.hour;  result *= 60;
+  result += date_time.min;   result *= 61;
+  result += date_time.sec;   result *= 1000;
+  result += date_time.msec;  
+  return(result);
+}
+#pragma endregion Misc

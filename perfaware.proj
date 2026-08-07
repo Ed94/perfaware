@@ -3,7 +3,7 @@
 target:
 {
   executable: "build/sim_8086.exe"
-  working_directory: "build/"
+  working_directory: ""
   enabled: 1
   label: "Sim 8086"
 }

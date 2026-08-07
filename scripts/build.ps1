@@ -278,6 +278,7 @@ $libraries_win32 = @(
     'kernel32.lib'
     'user32.lib'
     'gdi32.lib'
+	'vcruntime.lib'
 )
 
 # --- Functions ---
@@ -291,11 +292,12 @@ function compile-unit {
     )
     $compile_args = @()
     $compile_args += $f_std_c11
+	$compile_args += $f_all_c
+	$compile_args += $f_ms_ex
     $compile_args += $f_wall
     $compile_args += $f_wno_attributes
     $compile_args += $f_exceptions_disabled
     $compile_args += $f_diagnostics_absolute
-    $compile_args += $f_optimize_none
     $compile_args += $f_debug
     foreach ($p in $include_paths) {
         $compile_args += ($f_include + $p)
@@ -306,7 +308,8 @@ function compile-unit {
     $compile_args += ($f_output + $link_module)
 
     write-host "Compiling '$unit' -> '$link_module'" -ForegroundColor DarkCyan
-    & $compiler $compile_args
+	$time_to_compile = Measure-Command { & $compiler $compile_args }
+	write-host "Compilation took $($time_to_compile.TotalMilliseconds)ms"
     if ($LASTEXITCODE -ne 0) { write-error "Compilation failed for $unit. Aborting."; exit 1 }
 }
 
@@ -340,7 +343,8 @@ function link-modules {
     $link_args += $user_link_args
 
     write-host "Linking modules into '$module'" -ForegroundColor DarkCyan
-    & $linker $link_args
+	$time_to_link = Measure-Command { & $linker $link_args }
+	write-host "Linking took $($time_to_link.TotalMilliseconds)ms"
     if ($LASTEXITCODE -ne 0) { write-error "Linking failed. Aborting."; exit 1 }
 }
 
@@ -355,6 +359,9 @@ function build-part_1 {
     $module_c = join-path $path_build  'sim_8086.o'
 
     $compile_args = @()
+	$compile_args += $f_debug
+	$compile_args += $f_optimize_none
+	# $compile_args += $f_optimize_size
     $compile_args += ($f_define + 'BUILD_DEBUG=1')
 
     compile-unit $source_c $module_c $includes $compile_args
