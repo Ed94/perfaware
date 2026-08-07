@@ -1,6 +1,15 @@
-function clone-gitrepo { param( [string] $path, [string] $url )
+function clone-gitrepo { param( [string] $path, [string] $url, [switch] $NoPull )
 	if (test-path $path) {
-		# git -C $path pull
+		if ($NoPull) {
+			Write-Host "Skipping pull on $path (per -NoPull)."
+			return
+		}
+		# Already a checkout — refresh to upstream tip.
+		# --ff-only refuses to create a merge commit if the local branch has
+		# diverged, so a divergence surfaces as a clear git error instead of a
+		# silent merge. Preserves the read-only intent of update_deps.
+		Write-Host "Pulling latest into $path ..."
+		git -C $path pull --ff-only
 	}
 	else {
 		Write-Host "Cloning $url ..."

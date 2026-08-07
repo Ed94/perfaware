@@ -27,7 +27,7 @@ Standard: c23
 
 #define WinAPI __attribute((__stdcall__)) __attribute__((__force_align_arg_pointer__)) // Win32 Syscall FFI
 
-#define os_layer // Marker for interfaced resolved by os platform layer.
+#define os_layer // Marker for interface resolved by os platform layer.
 #pragma endregion Platform
 
 #define offset_of(type, member)  cast(U8,__builtin_offsetof(type,member))
