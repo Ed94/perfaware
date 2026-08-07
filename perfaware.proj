@@ -1,0 +1,9 @@
+// raddbg 0.9.28 project file
+
+target:
+{
+  executable: "build/sim_8086.exe"
+  working_directory: "build/"
+  enabled: 1
+  label: "Sim 8086"
+}

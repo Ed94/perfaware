@@ -3,6 +3,7 @@
 #	include "dsl.h"
 #	include "memory.h"
 #	include "hashing.h"
+#	include "analysis.h"
 #endif
 
 #pragma region Key Table Linear (KTL)

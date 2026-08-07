@@ -4,6 +4,7 @@
 #	include "memory.h"
 #	include "hashing.h"
 #	include "tables.h"
+#	include "analysis.h"
 #endif
 
 // NOTE(rjf): Includes reverses for uppercase and lowercase hex.

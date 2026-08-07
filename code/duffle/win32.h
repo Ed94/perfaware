@@ -52,6 +52,10 @@ WinAPI B4 ms_write_console(
     U4_V           chars_written, 
     U8            reserved
 ) asm("WriteConsoleA");
+WinAPI void* ms_create_file_a(char const* lpFileName, U4 dwDesiredAccess, U4 dwShareMode, void* lpSecurityAttributes, U4 dwCreationDisposition, U4 dwFlagsAndAttributes, void* hTemplateFile) asm("CreateFileA");
+WinAPI B4    ms_write_file(void* hFile, void const* lpBuffer, U4 nNumberOfBytesToWrite, U4* lpNumberOfBytesWritten, void* lpOverlapped) asm("WriteFile");
+WinAPI B4    ms_read_file(void* hFile, void* lpBuffer, U4 nNumberOfBytesToRead, U4* lpNumberOfBytesRead, void* lpOverlapped) asm("ReadFile");
+WinAPI B4    ms_close_handle(void* hObject) asm("CloseHandle");
 
 // --- User32 ---
 WinAPI U2 ms_register_class_a(MS_WNDCLASSA const* lpWndClass) asm("RegisterClassA");
@@ -106,17 +110,24 @@ WinAPI void* ms_create_compatible_bitmap(void* hdc, S4 cx, S4 cy)            asm
 WinAPI B4    ms_bit_blt(void* hdcDest, S4 x, S4 y, S4 w, S4 h, void* hdcSrc, S4 xSrc, S4 ySrc, U4 rop) asm("BitBlt");
 WinAPI B4    ms_delete_dc(void* hdc)                                         asm("DeleteDC");
 WinAPI B4    ms_get_client_rect(void* hwnd, MS_RECT* lpRect)                 asm("GetClientRect");
-WinAPI void* ms_select_object(void* hdc, void* h)                          asm("SelectObject");
-WinAPI S4    ms_rectangle(void* hdc, S4 left, S4 top, S4 right, S4 bottom) asm("Rectangle");
-WinAPI S4    ms_set_bk_mode(void* hdc, S4 mode)                            asm("SetBkMode");
-WinAPI void* ms_create_solid_brush(U4 color)                               asm("CreateSolidBrush");
-WinAPI S4    ms_delete_object(void* ho)                                    asm("DeleteObject");
+WinAPI void* ms_select_object(void* hdc, void* h)                            asm("SelectObject");
+WinAPI S4    ms_rectangle(void* hdc, S4 left, S4 top, S4 right, S4 bottom)   asm("Rectangle");
+WinAPI S4    ms_set_bk_mode(void* hdc, S4 mode)                              asm("SetBkMode");
+WinAPI void* ms_create_solid_brush(U4 color)                                 asm("CreateSolidBrush");
+WinAPI S4    ms_delete_object(void* ho)                                      asm("DeleteObject");
 
 enum {
+	MS_GENERIC_READ          = 0x80000000,
+	MS_GENERIC_WRITE         = 0x40000000,
+	MS_CREATE_ALWAYS         = 2,
+	MS_OPEN_EXISTING         = 3,
+	MS_FILE_ATTRIBUTE_NORMAL = 0x80,
+
 	MS_MEM_COMMIT          = 0x00001000,
 	MS_MEM_RESERVE         = 0x00002000,
 	MS_PAGE_READWRITE      = 0x04,
 	MS_SRCCOPY             = 0x00CC0020,
+
 	MS_WM_DESTROY          = 0x0002,
 	MS_WM_SIZE             = 0x0005,
 	MS_WM_PAINT            = 0x000F,
@@ -133,25 +144,25 @@ enum {
 	MS_WM_MOUSEWHEEL       = 0x020A,
 	MS_WS_OVERLAPPEDWINDOW = 0x00CF0000,
 	MS_WS_VISIBLE          = 0x10000000,
-	MS_VK_LEFT             = 0x25,
-	MS_VK_UP               = 0x26,
-	MS_VK_RIGHT            = 0x27,
-	MS_VK_DOWN             = 0x28,
 
 	MS_PAGE_EXECUTE_READWRITE = 0x40,
 
-	MS_WM_CHAR   = 0x0102,
-	MS_VK_RETURN = 0x0D,
 	MS_VK_BACK   = 0x08,
 	MS_VK_TAB    = 0x09,
+	MS_VK_RETURN = 0x0D,
+	MS_VK_SHIFT  =0x10,
 	MS_VK_SPACE  = 0x20,
-	MS_VK_F5     = 0x74,
 	MS_VK_PRIOR  = 0x21,
 	MS_VK_NEXT   = 0x22,
-
-	MS_VK_SHIFT =0x10,
+	MS_VK_LEFT   = 0x25,
+	MS_VK_UP     = 0x26,
+	MS_VK_RIGHT  = 0x27,
+	MS_VK_DOWN   = 0x28,
+	MS_VK_F1     = 0x70,
+	MS_VK_F2     = 0x71,
+	MS_VK_F5     = 0x74,
+	MS_WM_CHAR   = 0x0102,
 };
-
 
 #if BUILD_DEBUG
 FI_ void assert(U8 cond) { if(cond){return;} else{debug_trap(); ms_exit_process(1);} }

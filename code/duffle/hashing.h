@@ -2,6 +2,7 @@
 #	pragma once
 #	include "dsl.h"
 #	include "memory.h"
+#	include "analysis.h"
 #endif
 
 #pragma region Hashing
