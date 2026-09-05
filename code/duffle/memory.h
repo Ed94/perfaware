@@ -64,8 +64,7 @@ FI_ B4 mem_match  (U8 a, U8 b, U8 z)   { return mem_compare(a, b, z) == 0; }
 #pragma region Slice
 
 typedef unsigned char TSet_(UTF8);
-typedef Struct_(Str8)         { UTF8* ptr; U8 len; };
-typedef Str8 Slice_UTF8;
+typedef Struct_(Str8)         { UTF8* ptr; U8 len; }; typedef Str8 Slice_UTF8;
 typedef Struct_(Slice_Str8)   { Str8* ptr; U8 len; };
 #define slit8(string_literal) (Str8){ (UTF8*) string_literal, S_(string_literal) - 1 }
 #define str8(p,l) (Str8){p,l}
