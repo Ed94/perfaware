@@ -16,7 +16,7 @@ FI_ void u64_to_hex(U8 val, char* buf, S4 chars) {
 		for(S1 i = chars - 1; i >= 0; --i) { buf[i] = hex_chars[val & 0xF]; val >>= 4; }
 }
 
-internal UnicodeDecode
+I_ UnicodeDecode
 utf8_decode(U1* str, U1 max) {
 	UnicodeDecode result = {1, Max_U4};
 	U1 byte = str[0];

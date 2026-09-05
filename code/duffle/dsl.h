@@ -67,8 +67,8 @@ Standard: c23
 #define T_            typeof                                       // 
 #define T_same(a,b)   _Generic((a), typeof((b)): 1, default: 0)
 
-#define R_    restrict 
-#define V_    volatile 
+#define R_ restrict 
+#define V_ volatile 
 
 // R_ (restrict) establishes an "Eigen" or "Proprius" mapping.
 // Unlike volatile (V_), which assumes the memory can be changed by anything,

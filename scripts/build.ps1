@@ -18,6 +18,7 @@ if ((test-path $path_build) -eq $false) {
 $compiler  = "clang"
 $linker    = 'lld-link.exe'
 $objcopy   = 'llvm-objcopy'
+$objdump   = 'llvm-objdump'
 $archiver  = 'llvm-ar'
 
 # --- Compiler Flags: General / Compilation Mode ---
@@ -59,23 +60,23 @@ $f_charset_utf8          = '-utf-8'          # Source charset = UTF-8
 
 # --- Compiler Flags: Warnings ---
 # https://clang.llvm.org/docs/DiagnosticsReference.html
-$f_wall                  = '-Wall'
-$f_wextra                = '-Wextra'
-$f_werror                = '-Werror'
-$f_warnings_as_errors    = '-Werror'
-$f_wno_attributes        = '-Wno-attributes'
-$f_warnings_ignore       = '-Wno-'           # Prefix; usage: $f_warnings_ignore + 'unused'
-$f_wno_unused_function   = '-Wno-unused-function'
-$f_wno_unused_variable   = '-Wno-unused-variable'
-$f_wno_switch            = '-Wno-switch'
-$f_wno_uninitialized     = '-Wno-uninitialized'
+$f_wall                              = '-Wall'
+$f_wextra                            = '-Wextra'
+$f_werror                            = '-Werror'
+$f_warnings_as_errors                = '-Werror'
+$f_wno_attributes                    = '-Wno-attributes'
+$f_warnings_ignore                   = '-Wno-'           # Prefix; usage: $f_warnings_ignore + 'unused'
+$f_wno_unused_function               = '-Wno-unused-function'
+$f_wno_unused_variable               = '-Wno-unused-variable'
+$f_wno_switch                        = '-Wno-switch'
+$f_wno_uninitialized                 = '-Wno-uninitialized'
 $f_wno_implicit_function_declaration = '-Wno-implicit-function-declaration'
-$f_wno_ms_include        = '-Wno-microsoft-include'
-$f_wno_return_type_c_linkage = '-Wno-return-type-c-linkage'
-$f_wno_main_return_type  = '-Wno-main-return-type'
-$f_warning               = '-W'              # Prefix; usage: $f_warning + 'switch'
-$f_pedantic              = '-Wpedantic'
-$f_doc_warnings          = '-Wdocumentation'
+$f_wno_ms_include                    = '-Wno-microsoft-include'
+$f_wno_return_type_c_linkage         = '-Wno-return-type-c-linkage'
+$f_wno_main_return_type              = '-Wno-main-return-type'
+$f_warning                           = '-W'              # Prefix; usage: $f_warning + 'switch'
+$f_pedantic                          = '-Wpedantic'
+$f_doc_warnings                      = '-Wdocumentation'
 
 # --- Compiler Flags: Optimization ---
 $f_optimize_none         = '-O0'             # No optimization (debug default)
@@ -91,48 +92,48 @@ $f_lto                   = '-flto'           # Link-time optimization
 $f_lto_thin              = '-flto=thin'
 
 # --- Compiler Flags: Debug / Profile ---
-$f_debug                 = '-g'              # Debug info (default DWARF)
-$f_debug_codeview        = '-gcodeview'      # CodeView debug format (MS tools)
-$f_debug_dwarf_4         = '-gdwarf-4'       # Specific DWARF version
-$f_debug_dwarf_5         = '-gdwarf-5'
+$f_debug                  = '-g'              # Debug info (default DWARF)
+$f_debug_codeview         = '-gcodeview'      # CodeView debug format (MS tools)
+$f_debug_dwarf_4          = '-gdwarf-4'       # Specific DWARF version
+$f_debug_dwarf_5          = '-gdwarf-5'
 $f_debug_line_tables_only = '-gline-tables-only'
-$f_profiling_debug       = '-fdebug-info-for-profiling'
-$f_time_trace            = '-ftime-trace'    # Emit Chrome trace JSON
-$f_coverage_generate     = '-fprofile-instr-generate'
-$f_coverage_use          = '-fprofile-instr-use='
+$f_profiling_debug        = '-fdebug-info-for-profiling'
+$f_time_trace             = '-ftime-trace'    # Emit Chrome trace JSON
+$f_coverage_generate      = '-fprofile-instr-generate'
+$f_coverage_use           = '-fprofile-instr-use='
 
 # --- Compiler Flags: Code Generation ---
-$f_no_color_diagnostics  = '-fno-color-diagnostics'
-$f_color_diagnostics     = '-fcolor-diagnostics'
-$f_diagnostics_absolute  = '-fdiagnostics-absolute-paths'
-$f_exceptions_disabled   = '-fno-exceptions'
-$f_exceptions_enabled    = '-fexceptions'
-$f_RTTI_disabled         = '-fno-rtti'
-$f_RTTI_enabled          = '-frtti'
-$f_section_data          = '-fdata-sections'
-$f_section_functions     = '-ffunction-sections'
-$f_no_strict_alias       = '-fno-strict-aliasing'
-$f_strict_aliasing       = '-fstrict-aliasing'
-$f_signed_char           = '-fsigned-char'
-$f_unsigned_char         = '-funsigned-char'
-$f_pic                   = '-fPIC'           # Position-independent code
-$f_pie                   = '-fPIE'           # Position-independent executable
-$f_no_pic                = '-fno-pic'
-$f_no_pie                = '-fno-pie'
-$f_visible_hidden        = '-fvisibility=hidden'
-$f_visible_default       = '-fvisibility=default'
-$f_align_functions       = '-falign-functions='
-$f_align_loops           = '-falign-loops='
-$f_ms_extensions         = '-fms-extensions' # Allow MSVC language extensions
-$f_ms_compatibility      = '-fms-compatibility'
-$f_ms_runtime_lib_none   = '-fno-ms-runtime'
+$f_no_color_diagnostics      = '-fno-color-diagnostics'
+$f_color_diagnostics         = '-fcolor-diagnostics'
+$f_diagnostics_absolute      = '-fdiagnostics-absolute-paths'
+$f_exceptions_disabled       = '-fno-exceptions'
+$f_exceptions_enabled        = '-fexceptions'
+$f_RTTI_disabled             = '-fno-rtti'
+$f_RTTI_enabled              = '-frtti'
+$f_section_data              = '-fdata-sections'
+$f_section_functions         = '-ffunction-sections'
+$f_no_strict_alias           = '-fno-strict-aliasing'
+$f_strict_aliasing           = '-fstrict-aliasing'
+$f_signed_char               = '-fsigned-char'
+$f_unsigned_char             = '-funsigned-char'
+$f_pic                       = '-fPIC'           # Position-independent code
+$f_pie                       = '-fPIE'           # Position-independent executable
+$f_no_pic                    = '-fno-pic'
+$f_no_pie                    = '-fno-pie'
+$f_visible_hidden            = '-fvisibility=hidden'
+$f_visible_default           = '-fvisibility=default'
+$f_align_functions           = '-falign-functions='
+$f_align_loops               = '-falign-loops='
+$f_ms_extensions             = '-fms-extensions' # Allow MSVC language extensions
+$f_ms_compatibility          = '-fms-compatibility'
+$f_ms_runtime_lib_none       = '-fno-ms-runtime'
 $f_preprocess_non_integrated = '-no-integrated-cpp'
-$f_stack_protector       = '-fstack-protector'
-$f_stack_protector_strong = '-fstack-protector-strong'
-$f_stack_protector_all   = '-fstack-protector-all'
-$f_vptr                  = '-fvirtual-function-elimination'
-$f_vectorize             = '-vectorize-loops'
-$f_vectorize_slp         = '-vectorize-slp'
+$f_stack_protector           = '-fstack-protector'
+$f_stack_protector_strong    = '-fstack-protector-strong'
+$f_stack_protector_all       = '-fstack-protector-all'
+$f_vptr                      = '-fvirtual-function-elimination'
+$f_vectorize                 = '-vectorize-loops'
+$f_vectorize_slp             = '-vectorize-slp'
 
 # --- Compiler Flags: Sanitizers ---
 $f_sanitize_address       = '-fsanitize=address'
@@ -163,24 +164,6 @@ $f_verbose               = '-v'
 $f_set_stack_size        = '-stack='         # Stack size (linker-side, but accepted by clang)
 $f_symbol_prefix         = '-femit-all-decls'
 
-# --- Compiler Flags: MIPS Architecture (catalog parity with ps1/build_psyq.ps1) ---
-# Used by the PS1 cross-compile path (C:\projects\Pikuma\ps1). Not used by
-# the current Win32 build. Kept here so the catalog is complete.
-$f_arch_mips1            = '-march=mips1'
-$f_arch_mips2            = '-march=mips2'
-$f_arch_mips3            = '-march=mips3'
-$f_arch_abi32            = '-mabi=32'
-$f_arch_abi64            = '-mabi=64'
-$f_arch_little_endian    = '-EL'
-$f_arch_big_endian       = '-EB'
-$f_arch_fp32             = '-mfp32'
-$f_arch_no_pic           = '-fno-pic'
-$f_arch_no_shared        = '-mno-shared'
-$f_arch_no_abicalls      = '-mno-abicalls'
-$f_arch_no_llsc          = '-mno-llsc'
-$f_arch_no_gpopt         = '-mno-gpopt'
-$f_arch_no_stack_prot    = '-fno-stack-protector'
-
 # --- Linker Flags (passed via -Wl, to clang; or directly to gcc-style linkers) ---
 # These are GNU ld-style flags. When invoking lld-link.exe directly, prefer
 # the Win32-flavored flags below.
@@ -207,71 +190,81 @@ $f_link_no_as_needed     = '--no-as-needed'
 
 # --- Linker Flags (Win32 lld-link, used directly) ---
 # https://lld.llvm.org/windows_support.html
-$f_nologo                = '/NOLOGO'
-$f_link_win_no_incremental = '/INCREMENTAL:NO'
-$f_link_win_no_default_lib = '/NODEFAULTLIB'
-$f_link_win_subsystem_console = '/SUBSYSTEM:CONSOLE'
-$f_link_win_subsystem_windows = '/SUBSYSTEM:WINDOWS'
-$f_link_win_subsystem_efi_app = '/SUBSYSTEM:EFI_APPLICATION'
-$f_link_win_subsystem_native   = '/SUBSYSTEM:NATIVE'
-$f_link_win_machine_32   = '/MACHINE:X86'
-$f_link_win_machine_64   = '/MACHINE:X64'
-$f_link_win_machine_arm  = '/MACHINE:ARM'
-$f_link_win_machine_arm64 = '/MACHINE:ARM64'
-$f_link_win_debug        = '/DEBUG'
-$f_link_win_pdb          = '/PDB:'
-$f_link_win_path_output  = '/OUT:'
-$f_link_win_map          = '/MAP:'
-$f_link_win_entry        = '/ENTRY:'
-$f_link_win_lib_path     = '/LIBPATH:'
-$f_link_win_default_lib  = '/DEFAULTLIB:'
-$f_link_win_dll          = '/DLL'
-$f_link_win_optimize_ref = '/OPT:REF'        # Eliminate unreferenced data/functions
-$f_link_win_optimize_no_icf = '/OPT:NOICF'   # Disable identical COMDAT folding
-$f_link_win_optimize_no_ref = '/OPT:NOREF'   # Disable dead-strip
-$f_link_win_stack        = '/STACK:'
-$f_link_win_heap         = '/HEAP:'
-$f_link_win_merge        = '/MERGE:'
-$f_link_win_align        = '/ALIGN:'
-$f_link_win_base         = '/BASE:'
-$f_link_win_version      = '/VERSION:'
-$f_link_win_dynamic_base = '/DYNAMICBASE'
-$f_link_win_release      = '/RELEASE'
-$f_link_win_force        = '/FORCE'
-$f_link_win_verbose      = '/VERBOSE'
-$f_link_win_wholearchive = '/WHOLEARCHIVE:'
-$f_link_win_export       = '/EXPORT:'
-$f_link_win_delay_load   = '/DELAYLOAD:'
-$f_link_win_import       = '/IMPORT:'
-$f_link_win_def          = '/DEF:'
-$f_link_win_manifest     = '/MANIFEST'
-$f_link_win_manifest_no  = '/MANIFEST:NO'
-$f_link_win_manifest_uac = '/MANIFESTUAC:'
-$f_link_win_manifest_input = '/MANIFESTINPUT:'
-$f_link_win_section      = '/SECTION:'
-$f_link_win_swaprun      = '/SWAPRUN'
-$f_link_win_driver       = '/DRIVER'
+$f_nologo                       = '/NOLOGO'
+$f_link_win_no_incremental      = '/INCREMENTAL:NO'
+$f_link_win_no_default_lib      = '/NODEFAULTLIB'
+$f_link_win_subsystem_console   = '/SUBSYSTEM:CONSOLE'
+$f_link_win_subsystem_windows   = '/SUBSYSTEM:WINDOWS'
+$f_link_win_subsystem_efi_app   = '/SUBSYSTEM:EFI_APPLICATION'
+$f_link_win_subsystem_native    = '/SUBSYSTEM:NATIVE'
+$f_link_win_machine_32          = '/MACHINE:X86'
+$f_link_win_machine_64          = '/MACHINE:X64'
+$f_link_win_machine_arm         = '/MACHINE:ARM'
+$f_link_win_machine_arm64       = '/MACHINE:ARM64'
+$f_link_win_debug               = '/DEBUG'
+$f_link_win_pdb                 = '/PDB:'
+$f_link_win_path_output         = '/OUT:'
+$f_link_win_map                 = '/MAP:'
+$f_link_win_entry               = '/ENTRY:'
+$f_link_win_lib_path            = '/LIBPATH:'
+$f_link_win_default_lib         = '/DEFAULTLIB:'
+$f_link_win_dll                 = '/DLL'
+$f_link_win_optimize_ref        = '/OPT:REF'     # Eliminate unreferenced data/functions
+$f_link_win_optimize_no_icf     = '/OPT:NOICF'   # Disable identical COMDAT folding
+$f_link_win_optimize_no_ref     = '/OPT:NOREF'   # Disable dead-strip
+$f_link_win_stack               = '/STACK:'
+$f_link_win_heap                = '/HEAP:'
+$f_link_win_merge               = '/MERGE:'
+$f_link_win_align               = '/ALIGN:'
+$f_link_win_base                = '/BASE:'
+$f_link_win_version             = '/VERSION:'
+$f_link_win_dynamic_base        = '/DYNAMICBASE'
+$f_link_win_release             = '/RELEASE'
+$f_link_win_force               = '/FORCE'
+$f_link_win_verbose             = '/VERBOSE'
+$f_link_win_wholearchive        = '/WHOLEARCHIVE:'
+$f_link_win_export              = '/EXPORT:'
+$f_link_win_delay_load          = '/DELAYLOAD:'
+$f_link_win_import              = '/IMPORT:'
+$f_link_win_def                 = '/DEF:'
+$f_link_win_manifest            = '/MANIFEST'
+$f_link_win_manifest_no         = '/MANIFEST:NO'
+$f_link_win_manifest_uac        = '/MANIFESTUAC:'
+$f_link_win_manifest_input      = '/MANIFESTINPUT:'
+$f_link_win_section             = '/SECTION:'
+$f_link_win_swaprun             = '/SWAPRUN'
+$f_link_win_driver              = '/DRIVER'
 $f_link_win_large_address_aware = '/LARGEADDRESSAWARE'
-$f_link_win_fail_if_mismatch = '/FAILIFMISMATCH'
-$f_link_win_through      = '/THREADOPT'
-$f_link_win_error_report = '/ERRORREPORT'
-$f_link_win_repro        = '/BREPRO'
-$f_link_win_safeseh      = '/SAFESEH'
-$f_link_win_guard_cf     = '/GUARD:CF'
-$f_link_win_guard_no_cf  = '/GUARD:NOCF'
-$f_link_win_pgo_run      = '/USEPROFILE'
-$f_link_win_pgo_gen      = '/PROFILE'
-$f_link_win_idl          = '/IDLOUT:'
-$f_link_win_delay_unload = '/DELAY:UNLOAD'
-$f_link_win_compat_property = '/CETCOMPAT'
-$f_link_win_debug_fastlink = '/DEBUG:FASTLINK'
-$f_link_win_lib_list     = '/LIB'
+$f_link_win_fail_if_mismatch    = '/FAILIFMISMATCH'
+$f_link_win_through             = '/THREADOPT'
+$f_link_win_error_report        = '/ERRORREPORT'
+$f_link_win_repro               = '/BREPRO'
+$f_link_win_safeseh             = '/SAFESEH'
+$f_link_win_guard_cf            = '/GUARD:CF'
+$f_link_win_guard_no_cf         = '/GUARD:NOCF'
+$f_link_win_pgo_run             = '/USEPROFILE'
+$f_link_win_pgo_gen             = '/PROFILE'
+$f_link_win_idl                 = '/IDLOUT:'
+$f_link_win_delay_unload        = '/DELAY:UNLOAD'
+$f_link_win_compat_property     = '/CETCOMPAT'
+$f_link_win_debug_fastlink      = '/DEBUG:FASTLINK'
+$f_link_win_lib_list            = '/LIB'
 
 # --- Objcopy Flags ---
-$f_objcopy_format        = '-O'             # Output format
-$f_objcopy_add_section   = '--add-section'
-$f_objcopy_update_section = '--update-section'
+$f_objcopy_format            = '-O'             # Output format
+$f_objcopy_add_section       = '--add-section'
+$f_objcopy_update_section    = '--update-section'
 $f_objcopy_set_section_flags = '--set-section-flags'
+
+# --- Objdump Flags ---
+$f_objdump_disassemble        = '-d'                       # Disassemble all executable sections
+$f_objdump_machine            = '-M'                       # Usage: $f_objdump_machine + 'intel'
+$f_objdump_source_lines       = '-l'                       # Interleave source lines (requires -g)
+$f_objdump_no_raw_insn        = '--no-show-raw-insn'       # Omit hex bytes
+$f_objdump_reloc              = '-r'                       # Inline relocations
+$f_objdump_symbols            = '--disassemble-symbols='   # Usage: $f_objdump_symbols + 'main'
+$f_objdump_headers            = '-x'                       # All headers + sections (verbose)
+$f_objdump_section_contents   = '-s'                       # Raw section contents (hex dump)
 
 # --- Baseline Libraries (lld-link, Win32) ---
 $libraries_win32 = @(
@@ -283,8 +276,7 @@ $libraries_win32 = @(
 
 # --- Functions ---
 
-function compile-unit {
-    param(
+function compile-unit { param(
         [string]   $unit,
         [string]   $link_module,
         [string[]] $include_paths,
@@ -313,8 +305,7 @@ function compile-unit {
     if ($LASTEXITCODE -ne 0) { write-error "Compilation failed for $unit. Aborting."; exit 1 }
 }
 
-function link-modules {
-    param(
+function link-modules { param(
         [string[]] $link_modules,
         [string]   $module,
         [string]   $pdb,
@@ -348,6 +339,28 @@ function link-modules {
     if ($LASTEXITCODE -ne 0) { write-error "Linking failed. Aborting."; exit 1 }
 }
 
+function dump-disassembly { param([string] $obj, [string] $exe)
+    $base    = [System.IO.Path]::GetFileNameWithoutExtension($exe)
+    $asm_obj = join-path $path_build "$base.obj.asm"
+    $asm_exe = join-path $path_build "$base.exe.asm"
+
+    $objdump_args = @()
+    $objdump_args += $f_objdump_disassemble
+    $objdump_args += ($f_objdump_machine + 'intel')
+    $objdump_args += $f_objdump_source_lines
+    $objdump_args += $f_objdump_no_raw_insn
+
+    write-host "Dumping object disassembly -> '$asm_obj'" -ForegroundColor DarkCyan
+    $time_to_objdump = Measure-Command { & $objdump $objdump_args $obj | Out-File -FilePath $asm_obj -Encoding utf8 }
+    write-host "Object disassembly took $($time_to_objdump.TotalMilliseconds)ms"
+    if ($LASTEXITCODE -ne 0) { write-error "objdump failed for $obj. Aborting."; exit 1 }
+
+    write-host "Dumping executable disassembly -> '$asm_exe'" -ForegroundColor DarkCyan
+    $time_to_objdump = Measure-Command { & $objdump $objdump_args $exe | Out-File -FilePath $asm_exe -Encoding utf8 }
+    write-host "Executable disassembly took $($time_to_objdump.TotalMilliseconds)ms"
+    if ($LASTEXITCODE -ne 0) { write-error "objdump failed for $exe. Aborting."; exit 1 }
+}
+
 function build-part_1 {
     # The base lib uses subdir-prefixed includes (e.g. "duffle/dsl.h"),
     # so the include root is <code>, not <code>/duffle.
@@ -370,6 +383,8 @@ function build-part_1 {
     $exe = join-path $path_build 'sim_8086.exe'
 
     link-modules $module_c $exe $pdb @()
+
+    dump-disassembly $module_c $exe
 }
 
 build-part_1

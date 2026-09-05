@@ -10,6 +10,8 @@
 
 #include "duffle/win32.h"
 
+// #include "8086/decoder.h"
+
 typedef Struct_(U2_HL) { U1 Low; U1 High; };
 
 #define bitmask_(pos)              (1 << pos)
@@ -54,9 +56,6 @@ I_ Str8 binary_as_str8(Slice_U1 data, FArena* str8_mem) { Str8 result = {0};
 	jret: return result;
 }
 
-typedef Enum_(U4, x86_Op) {
-	x86_mov
-};
 
 
 enum {

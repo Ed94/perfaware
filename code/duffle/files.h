@@ -50,7 +50,7 @@ os_layer File file_open(FArena* scratch, AccessFlags flags, Str8 path);
 os_layer FileProperties properties_from_file(File file);
 os_layer U8             file_read(File file, R1_U8 rng, U1* out_data);
 
-internal Slice_U1
+I_ Slice_U1
 data_from_file_range(FArena* arena, File file, R1_U8 range) {
   U8       pre_pos = farena_save(arena[0]);
   U8       len     = span_r1u8(range);

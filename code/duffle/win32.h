@@ -2,6 +2,7 @@
 #	pragma once
 #	include "dsl.h"
 #	include "memory.h"
+#	include "files.h"
 #endif
 
 WinAPI void  ms_exit_process(U4 uExitCode)  asm("ExitProcess"); // Kernel 32
@@ -245,7 +246,7 @@ w32_date_time_from_system_time(DateTime* out, MS_SYSTEMTIME* in) {
 I_ void
 w32_dense_time_from_file_time(DenseTime* out, MS_FILETIME* in) {
 	MS_SYSTEMTIME systime = {0}; ms_filetime_to_systemtime(in, &systime); DateTime date_time = {0};
-	w32_date_time_from_system_time(&date_time, &systime); *out = dense_time_from_date_time(date_time);
+	w32_date_time_from_system_time(&date_time, &systime); out[0] = dense_time_from_date_time(date_time);
 }
 
 I_ FilePropertyFlags 
