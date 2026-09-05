@@ -37,6 +37,7 @@ FI_ U8 mem_compare(U8 a, U8 b, U8 len) { return (U8)(__builtin_memcmp((void cons
 FI_ B4 mem_match  (U8 a, U8 b, U8 z)   { return mem_compare(a, b, z) == 0; }
 
 #define mem_match_struct(a,b)  mem_match(C_(U8,a), C_(U8,b), S_((a)[0]))
+#define mem_zero_struct(s) mem_zero(u8_(& s), S_(s))
 
 #pragma region DAG
 
@@ -126,9 +127,9 @@ I_  Slice  farena_push(FArena_R arena, U8 amount, Opt_farena o) {
 	return (Slice){ ptr, to_commit };
 }
 FI_ void farena_reset (FArena_R arena) { arena->used = 0; }
-FI_ void farena_rewind(FArena_R arena, U4 save_point) {
-	U8 end       = arena->start + arena->used; assert_bounds(save_point, arena->start, end);
-	arena->used -= save_point - arena->start;
+FI_ void farena_rewind(FArena_R arena, U8 save_point) {
+	assert(save_point <= arena->used);
+	arena->used = save_point;
 }
 FI_ U8 farena_save(FArena arena) { return arena.used; }
 #define farena_push_(arena, amount, ...)                                          farena_push((arena), (amount), opt_(farena, __VA_ARGS__))

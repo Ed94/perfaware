@@ -45,17 +45,17 @@ typedef Struct_(X8616_InfoMsg) {
 /* Static templates use the same <identifier> vocabulary as Duffle's str8_fmt_ktl_buf path.
    The decoder itself never expands these. */
 RO_ global Str8 x8616_info_templates[x8616_info_count] = {
-	[x8616_info_none]                     = str8(""),
-	[x8616_info_invalid_opcode]           = str8("Opcode <actual> is not in the Part 1 8086 decode table at <offset>."),
-	[x8616_info_invalid_opcode_extension] = str8("Opcode extension <actual> does not match the selected encoding at <offset>."),
-	[x8616_info_invalid_post_opcode]      = str8("Post-opcode byte <actual> does not match expected <expected> at <offset>."),
-	[x8616_info_truncated_instruction]    = str8("Instruction at <offset> needs <expected> bytes; <actual> are available."),
-	[x8616_info_output_full]              = str8("Decoded-instruction output is full: capacity <expected>, produced <actual>."),
-	[x8616_info_gen_multiple_payloads]    = str8("Encoding <offset> describes more than one stream payload."),
-	[x8616_info_gen_body_cap_exceeded]    = str8("Encoding <offset> requires <actual> body bytes; decoder body capacity is <expected>."),
-	[x8616_info_gen_aux_cap_exceeded]     = str8("Generated auxiliary decode table exceeds capacity <expected>."),
-	[x8616_info_gen_ambiguous_decode]     = str8("Decode is ambiguous for opcode/second-byte key <offset>: plans <expected> and <actual>."),
-	[x8616_info_gen_dispatch_mismatch]    = str8("Generated dispatch mismatch for opcode/second-byte key <offset>: expected <expected>, actual <actual>."),
+	[x8616_info_none]                     = slit8(""),
+	[x8616_info_invalid_opcode]           = slit8("Opcode <actual> is not in the Part 1 8086 decode table at <offset>."),
+	[x8616_info_invalid_opcode_extension] = slit8("Opcode extension <actual> does not match the selected encoding at <offset>."),
+	[x8616_info_invalid_post_opcode]      = slit8("Post-opcode byte <actual> does not match expected <expected> at <offset>."),
+	[x8616_info_truncated_instruction]    = slit8("Instruction at <offset> needs <expected> bytes; <actual> are available."),
+	[x8616_info_output_full]              = slit8("Decoded-instruction output is full: capacity <expected>, produced <actual>."),
+	[x8616_info_gen_multiple_payloads]    = slit8("Encoding <offset> describes more than one stream payload."),
+	[x8616_info_gen_body_cap_exceeded]    = slit8("Encoding <offset> requires <actual> body bytes; decoder body capacity is <expected>."),
+	[x8616_info_gen_aux_cap_exceeded]     = slit8("Generated auxiliary decode table exceeds capacity <expected>."),
+	[x8616_info_gen_ambiguous_decode]     = slit8("Decode is ambiguous for opcode/second-byte key <offset>: plans <expected> and <actual>."),
+	[x8616_info_gen_dispatch_mismatch]    = slit8("Generated dispatch mismatch for opcode/second-byte key <offset>: expected <expected>, actual <actual>."),
 };
 
 typedef Struct_(X8616_InfoList) {
@@ -67,7 +67,7 @@ typedef Struct_(X8616_InfoList) {
 	U4 dropped_count;
 };
 
-FI_ Str8 x8616_info_template(X8616_InfoCode code) { return code < x8616_info_count ? x8616_info_templates[code] : x8616_info_templates[x8616_info_none]; }
+I_ Str8 x8616_info_template(X8616_InfoCode code) { return code < x8616_info_count ? x8616_info_templates[code] : x8616_info_templates[x8616_info_none]; }
 
 FI_ void x8616_info_push(FArena_R scratch
 	, X8616_InfoList_R list

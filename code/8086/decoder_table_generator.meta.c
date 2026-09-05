@@ -1,16 +1,21 @@
-#ifdef INTELLISENSE_DIRECTIVES
-#	pragma once
-#	include "duffle/dsl.h"
-#	include "duffle/text.h"
-#	include "duffle/win32.h"
-#	include "encoder.h"
-#	include "encoder_table.h"
-#	include "decoder.h"
-#	include "info.h"
-#endif
+#include "duffle/dsl.h"
+#include "duffle/analysis.h"
+#include "duffle/math.h"
+#include "duffle/encoding.h"
+#include "duffle/memory.h"
+#include "duffle/hashing.h"
+#include "duffle/tables.h"
+#include "duffle/text.h"
+#include "duffle/files.h"
+#include "duffle/win32.h"
+
+#include "info.h"
+#include "encoder.h"
+#include "encoder_table.h"
+#include "decoder.h"
 
 enum {
-	X8616_DECODE_GEN_MAX_AUX = 256 * 256,
+	X8616_DECODE_GEN_MAX_AUX = X8616_DECODE_AUX_MASK + 1,
 };
 
 typedef Struct_(X8616_DecodeGen) {
@@ -253,7 +258,8 @@ x8616_decode_gen_pass_validate(X8616_DecodeGen* gen, FArena_R info_scratch)
 
 X8616_DecodeGenInfo
 x8616_decode_table_generate(X8616_DecodeGen* gen, FArena_R info_scratch) {
-	gen[0] = (X8616_DecodeGen){0};
+	mem_zero_struct(gen[0]);
+	// gen[0] = (X8616_DecodeGen){0};
 	x8616_decode_gen_pass_plans   (gen, info_scratch);
 	x8616_decode_gen_pass_dispatch(gen, info_scratch);
 	x8616_decode_gen_pass_validate(gen, info_scratch);
@@ -266,3 +272,116 @@ x8616_decode_table_generate(X8616_DecodeGen* gen, FArena_R info_scratch) {
 	};
 	return result;
 }
+
+
+#ifndef X8616_DECODE_TABLE_OUTPUT
+#	define X8616_DECODE_TABLE_OUTPUT "./code/8086/gen/decoder_table.h"
+#endif
+
+enum {
+	X8616_DECODE_GEN_INFO_MEMORY = kilo(64),
+	X8616_DECODE_GEN_TEXT_MEMORY = kilo(128),
+	X8616_DECODE_GEN_FILE_MEMORY = kilo(4),
+};
+
+typedef Struct_(X8616_DecodeGenMemory) {
+	U1 info[X8616_DECODE_GEN_INFO_MEMORY];
+	U1 text[X8616_DECODE_GEN_TEXT_MEMORY];
+	U1 file[X8616_DECODE_GEN_FILE_MEMORY];
+};
+
+global X8616_DecodeGen       x8616_decode_gen;
+global X8616_DecodeGenMemory x8616_decode_gen_memory;
+
+I_ void
+x8616_decode_gen_append_u4(Str8Gen_R out, U4 value, U4 radix, U4 min_digits) {
+	UTF8 buffer[64];
+	Info_str8_from_u4 info = str8_from_u4_info(value, radix, min_digits, 0);
+	Str8 text = str8_from_u4_buf(slice_ut_arr(buffer), value, radix, min_digits, 0, info);
+	str8gen_append_str8(out, text);
+}
+
+I_ void x8616_decode_gen_append_hex_u1(Str8Gen_R out, U1 value) { x8616_decode_gen_append_u4(out, value, 16, 2); }
+I_ void x8616_decode_gen_append_hex_u2(Str8Gen_R out, U2 value) { x8616_decode_gen_append_u4(out, value, 16, 4); }
+I_ void x8616_decode_gen_append_dec   (Str8Gen_R out, U4 value) { x8616_decode_gen_append_u4(out, value, 10, 1); }
+
+internal void
+x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan const* plan) {
+	str8gen_append_str8(out, slit8("\t{ "));
+	x8616_decode_gen_append_hex_u2(out, plan->flags);          str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_hex_u1(out, plan->op);             str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_hex_u1(out, plan->encoding_flags); str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_hex_u1(out, plan->width);          str8gen_append_str8(out, slit8(", {"));
+	x8616_decode_gen_append_hex_u1(out, plan->operands[0]);    str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_hex_u1(out, plan->operands[1]);    str8gen_append_str8(out, slit8("}, "));
+	x8616_decode_gen_append_dec(out, plan->operand_count);     str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_dec(out, plan->payload);           str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_dec(out, plan->prefix_kind);       str8gen_append_str8(out, slit8(", "));
+	x8616_decode_gen_append_dec(out, plan->d_shift);           str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->w_shift);           str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->s_shift);           str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->v_shift);           str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->z_shift);           str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->reg_shift);         str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_dec(out, plan->sr_shift);          str8gen_append_str8(out, slit8(", {"));
+	x8616_decode_gen_append_hex_u1(out, plan->mod_rm.bits);    str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_hex_u1(out, plan->mod_rm.mask);    str8gen_append_str8(out, slit8("}, {"));
+	x8616_decode_gen_append_hex_u1(out, plan->post_opcode.bits); str8gen_append_str8(out, slit8(","));
+	x8616_decode_gen_append_hex_u1(out, plan->post_opcode.mask); str8gen_append_str8(out, slit8("} },\n"));
+}
+
+internal Str8
+x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen const* gen) {
+	str8gen_append_str8(out, slit8(
+		"// Generated from encoder_table.h. Do not hand-edit.\n"
+		"// Plan 0 is the all-zero nil/invalid plan.\n\n"
+		"RO_ global X8616_DecodePlan x8616_decode_plans["));
+	x8616_decode_gen_append_dec(out, X8616_ENCODING_COUNT + 1);
+	str8gen_append_str8(out, slit8("] =\n{\n"));
+	for (U4 idx = 0; idx < X8616_ENCODING_COUNT + 1; ++ idx) x8616_decode_gen_emit_plan(out, gen->plans + idx);
+
+	str8gen_append_str8(out, slit8("};\n\nRO_ global U2 x8616_decode_dispatch[256] =\n{\n"));
+	for (U4 idx = 0; idx < 256; ++ idx) {
+		if ((idx & 15) == 0) str8gen_append_str8(out, slit8("\t"));
+		x8616_decode_gen_append_hex_u2(out, gen->dispatch[idx]);
+		str8gen_append_str8(out, (idx & 15) == 15 ? slit8(",\n") : slit8(", "));
+	}
+
+	str8gen_append_str8(out, slit8("};\n\nRO_ global U1 x8616_decode_aux["));
+	x8616_decode_gen_append_dec(out, gen->aux_count);
+	str8gen_append_str8(out, slit8("] =\n{\n"));
+	for (U4 idx = 0; idx < gen->aux_count; ++ idx) {
+		if ((idx & 15) == 0) str8gen_append_str8(out, slit8("\t"));
+		x8616_decode_gen_append_hex_u1(out, gen->aux[idx]);
+		str8gen_append_str8(out, (idx & 15) == 15 ? slit8(",\n") : slit8(", "));
+	}
+	str8gen_append_str8(out, slit8("};\n\nenum {\n\tX8616_DECODE_PLAN_COUNT = "));
+	x8616_decode_gen_append_dec(out, X8616_ENCODING_COUNT + 1);
+	str8gen_append_str8(out, slit8(",\n\tX8616_DECODE_AUX_COUNT  = "));
+	x8616_decode_gen_append_dec(out, gen->aux_count);
+	str8gen_append_str8(out, slit8(",\n};\n"));
+	return str8(out->ptr, out->len);
+}
+
+CLANG_OPTIMIZE_DISABLE
+int
+main(void) {
+	FArena info_scratch = farena_make(slice_ut_arr(x8616_decode_gen_memory.info));
+	X8616_DecodeGenInfo gen_info = x8616_decode_table_generate(& x8616_decode_gen, & info_scratch);
+	if (gen_info.msgs.error_count) { ms_exit_process(1); return 1; }
+
+	Str8Gen output = {
+		.ptr = C_(UTF8*, x8616_decode_gen_memory.text),
+		.cap = S_(x8616_decode_gen_memory.text),
+	};
+	Str8 generated = x8616_decode_gen_emit(& output, & x8616_decode_gen);
+
+	FArena file_scratch = farena_make(slice_ut_arr(x8616_decode_gen_memory.file));
+	B4 wrote = write_data_to_file_path(slit8(X8616_DECODE_TABLE_OUTPUT), generated, & file_scratch);
+	if (! wrote) { ms_exit_process(2); return 2; }
+	if (gen_info.verified_count != 256 * 256) { ms_exit_process(3); return 3; }
+
+	ms_exit_process(0);
+	return 0;
+}
+CLANG_OPTIMIZE_ENABLE

@@ -271,8 +271,9 @@ properties_from_file(File file) {
 
 internal File 
 file_open(FArena* scratch, AccessFlags flags, Str8 path) {
-	File result  = {0};
-	Str16 path16 = str16_from_8(scratch, path);
+	File result   = {0};
+	U8 scratch_at = farena_save(scratch[0]);
+	Str16 path16  = str16_from_8(scratch, path);
 	U4 access_flags         = 0;
 	U4 share_mode           = 0;
 	U4 creation_disposition = MS_OPEN_EXISTING;
@@ -290,6 +291,7 @@ file_open(FArena* scratch, AccessFlags flags, Str8 path) {
 	else {
 		U4 err = ms_get_last_error(); (void)err;
 	}
+	farena_rewind(scratch, scratch_at);
 	return result;
 }
 
@@ -313,5 +315,21 @@ internal U8 file_read(File file, R1_U8 rng, U1* out_data) {
 		off += read_size;
 	}
 	U8 total_read_size = off - rng.p0; return total_read_size;
+}
+
+internal U8 file_write(File file, R1_U8 rng, U1* data) {
+	if (file_match(file, file_zero())) { return 0; }
+	MS_Handle* handle = C_(MS_Handle*,file.ptr[0]);
+	U1 const*  ptr    = data;
+	U8 off = rng.p0; while (off != rng.p1) {
+		U8 amt64       = rng.p1 - off;
+		U4 amt32       = C_(U4, min(mega(32), amt64));
+		U4 write_size  = 0;
+		MS_OVERLAPPED overlapped = { .Offset = C_(U4,off), .OffsetHigh = C_(U4,off >> 32) };
+		if ( ! ms_write_file(handle, ptr, amt32, & write_size, & overlapped) || write_size == 0) { break; }
+		ptr += write_size;
+		off += write_size;
+	}
+	return off - rng.p0;
 }
 #endif

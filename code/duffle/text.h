@@ -196,8 +196,8 @@ typedef Struct_(Str8Gen) { UTF8* ptr; U8 cap, len; };
 FI_ Slice str8gen_buf(Str8Gen_R gen) { return (Slice){u8_(gen->ptr) + gen->len, gen->cap - gen->len}; }
 
 FI_ void str8gen_append_str8(Str8Gen_R gen, Str8 str) { assert(gen != nullptr);
-	mem_bump_u8(u8_(gen->ptr), gen->cap, & gen->len, str.len);
 	U8 ptr = u8_(gen->ptr) + gen->len;
+	mem_bump_u8(u8_(gen->ptr), gen->cap, & gen->len, str.len);
 	mem_copy(ptr, u8_(str.ptr), str.len);
 }
 FI_ void str8gen_append_fmt(Str8Gen_R gen, Str8 fmt, KTL_Str8 tbl) {
@@ -216,8 +216,9 @@ typedef Str16 Slice_UTF16;
 internal Str16
 str16_from_8(FArena* arena, Str8 in) {
   Str16 result = {0}; if (in.len) {
-    U8       cap = in.len * 2;
-    Slice_U2 str = farena_push_array(arena, U2, cap + 1);
+    U8       pre_pos = farena_save(arena[0]);
+    U8       cap     = in.len * 2;
+    Slice_U2 str     = farena_push_array(arena, U2, cap + 1);
     U1* ptr = in.ptr;
     U1* opl = ptr + in.len;
     U8 size = 0;
@@ -227,7 +228,9 @@ str16_from_8(FArena* arena, Str8 in) {
       consume = utf8_decode(ptr, opl - ptr);
       size   += utf16_encode(str.ptr + size, consume.codepoint);
     }
-    str.ptr[size] = 0; farena_rewind(arena, (cap - size) * 2);
+    str.ptr[size] = 0;
+    U8 committed = align_pow2((size + 1) * S_(U2), MEM_ALIGNMENT_DEFAULT);
+    farena_rewind(arena, pre_pos + committed);
     result = str16(C_(UTF16*, str.ptr), size);
   }
   return result;

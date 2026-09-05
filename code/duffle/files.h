@@ -48,7 +48,8 @@ os_layer File file_open(FArena* scratch, AccessFlags flags, Str8 path);
 #define file_scope(scratch, flags, path) scope_info(Scope_FileInfo, {.f = file_open(scratch, flags, path)}, file_close(info.f))
 
 os_layer FileProperties properties_from_file(File file);
-os_layer U8             file_read(File file, R1_U8 rng, U1* out_data);
+os_layer U8             file_read (File file, R1_U8 rng, U1* out_data);
+os_layer U8             file_write(File file, R1_U8 rng, U1* data);
 
 I_ Slice_U1
 data_from_file_range(FArena* arena, File file, R1_U8 range) {
@@ -56,7 +57,8 @@ data_from_file_range(FArena* arena, File file, R1_U8 range) {
   U8       len     = span_r1u8(range);
   Slice_U1 result  = farena_push_array(arena, U1, len);
   U8 actual_read_size = file_read(file, range, result.ptr); if (actual_read_size < result.len) {
-		farena_rewind(arena, pre_pos + actual_read_size); result.len = actual_read_size;
+		U8 committed = align_pow2(actual_read_size, MEM_ALIGNMENT_DEFAULT);
+		farena_rewind(arena, pre_pos + committed); result.len = actual_read_size;
   }
   return result;
 }
@@ -66,5 +68,13 @@ data_from_file_path(FArena* arena, Str8 path, FArena* scratch) { file_scope(scra
 	FileProperties props = properties_from_file(info.f);
 	Slice_U1       data  = data_from_file_range(arena, info.f, r1u8(0, props.size)); return data;
 } unreachable(); }
+
+I_ B4
+write_data_to_file_path(Str8 path, Str8 data, FArena* scratch) { 
+	B4 good = false; file_scope(scratch, AccessFlag_Write, path) if (file_match(info.f, file_zero()) == false) {
+		U8 bytes_written = file_write(info.f, r1u8(0, data.len), data.ptr); good = bytes_written == data.len; 
+	}
+	return good; 
+}
 
 CLANG_OPTIMIZE_ENABLE

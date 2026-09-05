@@ -361,6 +361,31 @@ function dump-disassembly { param([string] $obj, [string] $exe)
     if ($LASTEXITCODE -ne 0) { write-error "objdump failed for $exe. Aborting."; exit 1 }
 }
 
+function build-8086_decoder_table {
+	$includes = @(
+		$path_code
+	)
+	
+	$source_c = join-path $path_8086  'decoder_table_generator.meta.c'
+	$module_c = join-path $path_build 'decoder_table_generator.meta.o'
+
+    $compile_args = @()
+	$compile_args += $f_debug
+	$compile_args += $f_optimize_none
+	# $compile_args += $f_optimize_size
+    $compile_args += ($f_define + 'BUILD_DEBUG=1')
+
+    compile-unit $source_c $module_c $includes $compile_args
+
+    $pdb = join-path $path_build 'decoder_table_generator.meta.pdb'
+    $exe = join-path $path_build 'decoder_table_generator.meta.exe'
+
+    link-modules $module_c $exe $pdb @()
+
+    dump-disassembly $module_c $exe
+}
+build-8086_decoder_table
+
 function build-part_1 {
     # The base lib uses subdir-prefixed includes (e.g. "duffle/dsl.h"),
     # so the include root is <code>, not <code>/duffle.
@@ -386,5 +411,4 @@ function build-part_1 {
 
     dump-disassembly $module_c $exe
 }
-
-build-part_1
+# build-part_1
