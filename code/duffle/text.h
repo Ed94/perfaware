@@ -122,6 +122,7 @@ I_ Str8 str8_from_u4_buf(Slice buf, U4 num, U4 radix, U4 min_digits, U4 digit_gr
 	/*Fill Prefix*/ if (info.prefix.len > 0) { slice_copy(result, info.prefix); }
 	return result;
 }
+
 I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template)
 {
 	slice_assert(buffer);
@@ -155,7 +156,7 @@ I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template)
 			// Hashing the potential token and cross checking it with our token table
 			U8 key = hash64_fnv1a_ret(slice_ut(u8_(potential_token_cursor), potential_token_len), 0);
 			Str8_R value = nullptr; for slice_iter(table, token) {
-				// We do a linear iteration instead of a hash table lookup because the user should never subst with more than 100 unqiue tokens..
+				// We do a linear iteration instead of a hash table lookup because the user should never subst with more than 32-128 unqiue tokens..
 				if (token->key == key) { value = & token->value; break; }
 			}
 			if (value)
