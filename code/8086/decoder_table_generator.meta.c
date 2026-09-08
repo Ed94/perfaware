@@ -40,11 +40,11 @@ typedef Struct_(X8616_DecodeGenInfo) {
 	X8616_InfoList msgs;
 };
 
-FI_ B1 x8616_decode_gen_operand_uses_modrm(X8616_Operand operand) { 
+FI_ B4 x8616_decode_gen_operand_uses_modrm(X8616_Operand operand) { 
 	return operand == x8616_operand_rm || operand == x8616_operand_reg_modrm || operand == x8616_operand_segment_modrm; 
 }
 
-FI_ B1 x8616_decode_gen_operand_uses_rm(X8616_Operand operand) { return operand == x8616_operand_rm; }
+FI_ B4 x8616_decode_gen_operand_uses_rm(X8616_Operand operand) { return operand == x8616_operand_rm; }
 
 internal X8616_DecodePayload
 x8616_decode_gen_payload_from_operand(X8616_Operand operand) {
@@ -141,11 +141,11 @@ x8616_decode_gen_plan(X8616_Encoding const* encoding, U4 encoding_idx, X8616_Inf
 	return plan;
 }
 
-FI_ B1 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding const* encoding, U1 opcode) {
+FI_ B4 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding const* encoding, U1 opcode) {
 	return (opcode & encoding->opcode.mask) == encoding->opcode.bits;
 }
 
-FI_ B1 x8616_decode_gen_plan_matches_second(X8616_DecodePlan const* plan, U1 byte) {
+FI_ B4 x8616_decode_gen_plan_matches_second(X8616_DecodePlan const* plan, U1 byte) {
 	if (plan->mod_rm.mask      && ((byte & plan->mod_rm.mask)      != plan->mod_rm.bits))      return false;
 	if (plan->post_opcode.mask && ((byte & plan->post_opcode.mask) != plan->post_opcode.bits)) return false;
 	return true;
@@ -221,10 +221,10 @@ x8616_decode_gen_pass_validate(X8616_DecodeGen* gen, FArena_R info_scratch)
 		for (U4 encoding_idx = 0; encoding_idx < X8616_ENCODING_COUNT; ++ encoding_idx)
 		{
 			X8616_Encoding const* encoding = x8616_encodings + encoding_idx;
-			if (! x8616_decode_gen_encoding_matches_opcode(encoding, C_(U1, opcode))) continue;
+			if (x8616_decode_gen_encoding_matches_opcode(encoding, C_(U1, opcode)) == false) continue;
 
 			X8616_DecodePlan const* plan = gen->plans + encoding_idx + 1;
-			if (! x8616_decode_gen_plan_matches_second(plan, C_(U1, second))) continue;
+			if (x8616_decode_gen_plan_matches_second(plan, C_(U1, second)) == false) continue;
 
 			if (expected) x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
 				, x8616_info_gen_ambiguous_decode
@@ -239,7 +239,7 @@ x8616_decode_gen_pass_validate(X8616_DecodeGen* gen, FArena_R info_scratch)
 
 		if (dispatch & X8616_DECODE_AUX_BIT) {
 			U2 base = dispatch & X8616_DECODE_AUX_MASK;
-			actual = gen->aux[base + second];
+			actual  = gen->aux[base + second];
 		}
 		else if (dispatch) {
 			U1 candidate = C_(U1, dispatch);
@@ -279,24 +279,25 @@ x8616_decode_table_generate(X8616_DecodeGen* gen, FArena_R info_scratch) {
 #endif
 
 enum {
-	X8616_DECODE_GEN_INFO_MEMORY = kilo(64),
-	X8616_DECODE_GEN_TEXT_MEMORY = kilo(128),
-	X8616_DECODE_GEN_FILE_MEMORY = kilo(4),
+	INFO_MEMORY_SIZE = kilo(64),
+	TEXT_MEMORY_SIZE = kilo(128),
+	FILE_MEMORY_SIZE = kilo(4),
 };
 
-typedef Struct_(X8616_DecodeGenMemory) {
-	U1 info[X8616_DECODE_GEN_INFO_MEMORY];
-	U1 text[X8616_DECODE_GEN_TEXT_MEMORY];
-	U1 file[X8616_DECODE_GEN_FILE_MEMORY];
+typedef FStack_(FStack_64k, U1, kilo(64));
+typedef Struct_(SMemory) {
+	U1 info[INFO_MEMORY_SIZE];
+	U1 text[TEXT_MEMORY_SIZE];
+	U1 file[FILE_MEMORY_SIZE];
+
+	FStack_64k scratch;
+
+	X8616_DecodeGen gen;
 };
+global SMemory smem;
 
-global X8616_DecodeGen       x8616_decode_gen;
-global X8616_DecodeGenMemory x8616_decode_gen_memory;
-
-I_ void
-x8616_decode_gen_append_u4(Str8Gen_R out, U4 value, U4 radix, U4 min_digits) {
-	UTF8 buffer[64];
-	Info_str8_from_u4 info = str8_from_u4_info(value, radix, min_digits, 0);
+I_ void x8616_decode_gen_append_u4(Str8Gen_R out, U4 value, U4 radix, U4 min_digits) {
+	UTF8 buffer[64]; Info_str8_from_u4 info = str8_from_u4_info(value, radix, min_digits, 0);
 	Str8 text = str8_from_u4_buf(slice_ut_arr(buffer), value, radix, min_digits, 0, info);
 	str8gen_append_str8(out, text);
 }
@@ -305,29 +306,62 @@ I_ void x8616_decode_gen_append_hex_u1(Str8Gen_R out, U1 value) { x8616_decode_g
 I_ void x8616_decode_gen_append_hex_u2(Str8Gen_R out, U2 value) { x8616_decode_gen_append_u4(out, value, 16, 4); }
 I_ void x8616_decode_gen_append_dec   (Str8Gen_R out, U4 value) { x8616_decode_gen_append_u4(out, value, 10, 1); }
 
+FI_ Slice scratch_push(U8 len) { return fstack_push_(smem.scratch, len); }
+
+typedef Opt_(str8_from_u4) { U4 radix, min_digits, digit_group_separator; }; 
+I_ Str8 str8_from_u4_opt(U4 num, Opt_str8_from_u4 o) { if (o.radix == 0) {o.radix = 10;} 
+/*gather info*/Info_str8_from_u4 info = str8_from_u4_info(num, o.radix, o.min_digits, o.digit_group_separator);
+/*write buf  */return str8_from_u4_buf(scratch_push(128), num, o.radix, o.min_digits, o.digit_group_separator, info);
+}
+#define str8_from_u4(num, ...) str8_from_u4_opt(num, opt_(str8_from_u4, __VA_ARGS__))
+
+#define code_str8(...) slit8(stringify(__VA_ARGS__))
+
 internal void
 x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan const* plan) {
-	str8gen_append_str8(out, slit8("\t{ "));
-	x8616_decode_gen_append_hex_u2(out, plan->flags);          str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_hex_u1(out, plan->op);             str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_hex_u1(out, plan->encoding_flags); str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_hex_u1(out, plan->width);          str8gen_append_str8(out, slit8(", {"));
-	x8616_decode_gen_append_hex_u1(out, plan->operands[0]);    str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_hex_u1(out, plan->operands[1]);    str8gen_append_str8(out, slit8("}, "));
-	x8616_decode_gen_append_dec(out, plan->operand_count);     str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_dec(out, plan->payload);           str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_dec(out, plan->prefix_kind);       str8gen_append_str8(out, slit8(", "));
-	x8616_decode_gen_append_dec(out, plan->d_shift);           str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->w_shift);           str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->s_shift);           str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->v_shift);           str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->z_shift);           str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->reg_shift);         str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_dec(out, plan->sr_shift);          str8gen_append_str8(out, slit8(", {"));
-	x8616_decode_gen_append_hex_u1(out, plan->mod_rm.bits);    str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_hex_u1(out, plan->mod_rm.mask);    str8gen_append_str8(out, slit8("}, {"));
-	x8616_decode_gen_append_hex_u1(out, plan->post_opcode.bits); str8gen_append_str8(out, slit8(","));
-	x8616_decode_gen_append_hex_u1(out, plan->post_opcode.mask); str8gen_append_str8(out, slit8("} },\n"));
+	defer_rewind(smem.scratch.top) 
+	{
+		Str8 template = code_str8(
+			\t{ 
+				<flags>, <op>, <encoding_flags>, <width>,
+				{ <operands[0]> , <operands[1]> }, <operand_count>, 
+				<payload>, <prefix_kind>,
+				<d_shift>, <w_shift>, <s_shift>, <v_shift>, <z_shift>, <reg_shift>, <sr_shift>,
+				{ <mod_rm.bits>, <mod_rm.mask> },
+				{ <post_opcode.bits>, <post_opcode.mask> }, 
+			},\n
+		);
+		KTL_Slot_Str8 tbl[] = {
+		#define dec(value)    str8_from_u4(value, .radix = 10, .min_digits = 1)
+		#define hex_u1(value) str8_from_u4(value, .radix = 16, .min_digits = 2)
+		#define hex_u2(value) str8_from_u4(value, .radix = 16, .min_digits = 4)
+		#define entry(key,value) { ktl_str8_key(key), value }
+			entry("flags",            hex_u2(plan->flags)),
+			entry("op",               hex_u1(plan->op)),
+			entry("encoding_flags",   hex_u1(plan->encoding_flags)),
+			entry("width",            hex_u1(plan->width)),
+			entry("operands[0]",      hex_u1(plan->operands[0])),
+			entry("operands[1]",      hex_u1(plan->operands[1])),
+			entry("operand_count",    dec(plan->operand_count)),
+			entry("payload",          dec(plan->payload)),
+			entry("prefix_kind",      dec(plan->prefix_kind)),
+			entry("d_shift",          dec(plan->d_shift)),
+			entry("w_shift",          dec(plan->w_shift)),
+			entry("s_shift",          dec(plan->s_shift)),
+			entry("v_shift",          dec(plan->v_shift)),
+			entry("z_shift",          dec(plan->z_shift)),
+			entry("reg_shift",        dec(plan->reg_shift)),
+			entry("sr_shift",         dec(plan->sr_shift)),
+			entry("mod_rm.bits",      hex_u1(plan->mod_rm.bits)),
+			entry("mod_rm.mask",      hex_u1(plan->mod_rm.mask)),
+			entry("post_opcode.bits", hex_u1(plan->post_opcode.bits)),
+			entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
+		#undef dec
+		#undef hex
+		#undef entry
+		}; 
+		str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
+	}
 }
 
 internal Str8
@@ -366,19 +400,19 @@ x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen const* gen) {
 CLANG_OPTIMIZE_DISABLE
 int
 main(void) {
-	FArena info_scratch = farena_make(slice_ut_arr(x8616_decode_gen_memory.info));
-	X8616_DecodeGenInfo gen_info = x8616_decode_table_generate(& x8616_decode_gen, & info_scratch);
+	FArena info_scratch = farena_make(slice_ut_arr(smem.info));
+	X8616_DecodeGenInfo gen_info = x8616_decode_table_generate(& smem.gen, & info_scratch);
 	if (gen_info.msgs.error_count) { ms_exit_process(1); return 1; }
 
 	Str8Gen output = {
-		.ptr = C_(UTF8*, x8616_decode_gen_memory.text),
-		.cap = S_(x8616_decode_gen_memory.text),
+		.ptr = C_(UTF8*, smem.text),
+		.cap = S_(smem.text),
 	};
-	Str8 generated = x8616_decode_gen_emit(& output, & x8616_decode_gen);
+	Str8 generated = x8616_decode_gen_emit(& output, & smem.gen);
 
-	FArena file_scratch = farena_make(slice_ut_arr(x8616_decode_gen_memory.file));
+	FArena file_scratch = farena_make(slice_ut_arr(smem.file));
 	B4 wrote = write_data_to_file_path(slit8(X8616_DECODE_TABLE_OUTPUT), generated, & file_scratch);
-	if (! wrote) { ms_exit_process(2); return 2; }
+	if (wrote == false) { ms_exit_process(2); return 2; }
 	if (gen_info.verified_count != 256 * 256) { ms_exit_process(3); return 3; }
 
 	ms_exit_process(0);

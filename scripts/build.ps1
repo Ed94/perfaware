@@ -128,6 +128,7 @@ $f_ms_extensions             = '-fms-extensions' # Allow MSVC language extension
 $f_ms_compatibility          = '-fms-compatibility'
 $f_ms_runtime_lib_none       = '-fno-ms-runtime'
 $f_preprocess_non_integrated = '-no-integrated-cpp'
+$f_stack_probes_disabled     = '-mno-stack-arg-probe' # Requires the fully committed stack in link-modules
 $f_stack_protector           = '-fstack-protector'
 $f_stack_protector_strong    = '-fstack-protector-strong'
 $f_stack_protector_all       = '-fstack-protector-all'
@@ -289,6 +290,7 @@ function compile-unit { param(
     $compile_args += $f_wall
     $compile_args += $f_wno_attributes
     $compile_args += $f_exceptions_disabled
+    $compile_args += $f_stack_probes_disabled
     $compile_args += $f_diagnostics_absolute
     $compile_args += $f_debug
     foreach ($p in $include_paths) {
@@ -321,6 +323,7 @@ function link-modules { param(
     $link_args += $f_link_win_no_incremental
     $link_args += ($f_link_win_path_output + $module)
     $link_args += $f_link_win_subsystem_console
+    $link_args += ($f_link_win_stack + '262144,262144') # 256 KiB reserved
     $link_args += $f_link_win_debug
     $link_args += ($f_link_win_entry + 'main')
     $link_args += ($f_link_win_pdb + $pdb)

@@ -8,7 +8,7 @@
 
 #pragma region Key Table Linear (KTL)
 
-enum { KT_SLot_value = S_(U8), };
+enum { KT_Slot_value = S_(U8), };
 #define KTL_Slot_(type) Struct_(tmpl(KTL_Slot,type)) { \
 	U8   key;   \
 	type value; \
@@ -34,7 +34,7 @@ FI_ void ktl_populate_slice_a2_str8(KTL_Str8* kt, Slice_A2_Str8 values) {
 		mem_copy(u8_(& kt->ptr[id].value), u8_(& values.ptr[id][1]), S_(Str8));
 	}
 }
-#define ktl_str8_key(str)      hash64_fnv1a_ret(slice_to_ut(str8(str)), 0)
-#define ktl_str8_from_arr(arr) (KTL_Str8){arr, array_len(arr)}
+#define ktl_str8_key(str)      hash64_fnv1a_ret(slice_to_ut(slit8(str)), 0)
+#define ktl_str8_from_arr(arr) (KTL_Str8){arr, Array_len(arr)}
 
 #pragma endregion KTL

@@ -162,9 +162,9 @@ I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template)
 			{
 				// We're going to appending the string, make sure we have enough space in our buffer.
 				// NOTE(Ed): this version doesn't support growing the buffer (No Allocator Interface)
-				assert((buffer_remaining - potential_token_len) > 0);
 				copy_offset = min(buffer_remaining, value->len); // Prevent Buffer overflow.
-				mem_copy(u8_(cursor_buffer), u8_(value->ptr), buffer_remaining);
+				assert((buffer_remaining - copy_offset) > 0);
+				mem_copy(u8_(cursor_buffer), u8_(value->ptr), copy_offset);
 				// Sync cursor format to after the processed token
 				cursor_buffer    += copy_offset;
 				buffer_remaining -= copy_offset;
@@ -235,3 +235,24 @@ str16_from_8(FArena* arena, Str8 in) {
   }
   return result;
 }
+
+// Formatter where serial operation is done on-demand per-entry.
+
+// enum {
+// 	KTL_Str8FmtEntry_InlaidSize = (S_(Str8) * 2) - S_(Str8Fmt_TokenKind),
+// };
+// typedef Enum_(U4, Str8Fmt_SerialOpKind) {
+// 	Str8Fmt_TKind_Str8,
+// 	Str8Fmt_Base16_U1,
+// 	Str8Fmt_Base16_U2,
+// 	Str8Fmt_Base10_U4,
+// };
+// typedef Struct_(KTL_Str8Fmt_SerialOp_Entry) {
+// 	union {
+// 		U1    InlaidData[KTL_Str8FmtEntry_InlaidSize];
+// 		Str8  str;
+// 		void* Ptr;
+// 	};
+// 	Str8Fmt_SerialOpKind kind;
+// };
+// typedef KTL_Slot_(KTL_Str8Fmt_SerialOp_Entry);

@@ -41,8 +41,8 @@ Standard: c23
 #define glue(A, B)         glue_impl(A, B)
 #define tmpl(prefix, type) prefix ## _ ## type
 
-#define stringify_impl(S)        #S
-#define stringify(S)             stringify_impl(S)
+#define stringify_impl(...) #__VA_ARGS__
+#define stringify(...)      stringify_impl(__VA_ARGS__)
 
 #define VA_Sel_1( _1, ... ) _1 // <-- Of all th args passed pick _1.
 #define VA_Sel_2( _1, _2, ... ) _2 // <-- Of all the args passed pick _2.
