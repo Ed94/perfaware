@@ -134,8 +134,11 @@ typedef float F4_2 __attribute__((vector_size(16)));
 #define u8_v(value) C_(U8 V_*, value)
 enum { false = 0, true  = 1, true_overflow, };
 
+#define u2_lo(value) u1_(u2_(value))
+#define u2_hi(value) u1_(u2_(value) >> 8)
+
 #define u4_lo(value) ((value) & 0xFFFFU)
-#define u4_hi(value) ((value) >> 12)
+#define u4_hi(value) ((value) >> 16)
 
 typedef void Proc_(VoidFn) (void);
 

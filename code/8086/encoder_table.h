@@ -444,7 +444,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.header = x8616_opc_byte(x8616_opcode_aam),
 		.post_opcode = {
 			.bits = X8616_POST_OPCODE_AAM_AAD,
-			.mask = X8616_OPCODE_MASK,
+			.mask = X8616_BYTE_MASK,
 		},
 		.op = x8616_op_aam,
 	},
@@ -453,7 +453,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.header = x8616_opc_byte(x8616_opcode_aad),
 		.post_opcode = {
 			.bits = X8616_POST_OPCODE_AAM_AAD,
-			.mask = X8616_OPCODE_MASK,
+			.mask = X8616_BYTE_MASK,
 		},
 		.op = x8616_op_aad,
 	},
