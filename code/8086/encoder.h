@@ -6,16 +6,32 @@
 /* Intel 8086 Family User's Manual, Oct 1979 (9800722-03) ch.4 p.4-18,
    Figure 4-20, Table 4-11, Table 4-12.
 
-   Opcode  = the identifying bits in Table 4-12 (width varies: 4, 5, 6, 7, or 8).
-             Not the first instruction byte.
-   Fields  = d, w, s, v, z, reg, sr (Table 4-11). Packed into that same byte.
-   Header  = byte 1 as stored: opcode bits sitting in position, field bits OR'd in.
+   Figure 4-20 byte 1:
 
-   BytePattern matches a header byte: .bits = expected bits in position,
-   .mask = bits that must match (opcode bits, plus any fixed literals). */
+     7           hole          0
+    +------------+-------------+
+    |   OPCODE   |  fields     |
+    +------------+-------------+
+         ^              ^
+         |              d, w, s, v, z, reg, cccc  (Table 4-11)
+         Table 4-12 identifying bits (width 4..8)
+
+   Construction:
+     header = (opcode << hole) | fields
+     X8616_Opcode  = the unshifted identifying bits
+     X8616_Encoding.header = BytePattern for that packed byte
+
+   INC AX:
+     Table 4-12:  0 1 0 0 0  reg
+     opcode = 01000,  hole = 3,  reg = AX
+     header = (01000 << 3) | 000  = 0x40
+
+   BytePattern.mask = bits that must match (opcode bits + any fixed literals). */
 typedef Struct_(X8616_BytePattern) { U1 bits;  U1 mask; };
 typedef Struct_(X8616_BitField)    { U1 shift; U1 width; };
 
+// width field size in bits; 0 means this encoding skips it.
+// d w s v z reg sr = Table 4-11. alu = ttt, cc = cccc (catalog).
 typedef Struct_(X8616_HeaderFields) {
 	X8616_BitField d;
 	X8616_BitField w;
@@ -32,6 +48,7 @@ typedef Struct_(X8616_HeaderFields) {
 #define x8616_header_opcode_mask(field_width) u1_(~((1u << (field_width)) - 1u))
 #define x8616_opc(opcode, field_width)        ((X8616_BytePattern){ u1_((opcode) << (field_width)), x8616_header_opcode_mask(field_width) })
 #define x8616_opc_byte(opcode)                x8616_opc((opcode), 0)
+#define x8616_opcode_in(header, hole)         ((header) >> (hole)) /* fields-zeroed byte 1 → identifying bits */
 
 typedef Enum_(U1, X8616_Op) {
 	x8616_op_invalid = 0x00,
@@ -166,14 +183,6 @@ typedef Enum_(U1, X8616_DigitKind) {
 	x8616_digit_shift = 0x2,
 };
 
-/* header: Byte 1 match (opcode bits aligned, field bits masked). Not the opcode.
-    mod_rm: Optional constraint on the ModR/M byte.
-    post_opcode: Optional fixed byte immediately after byte 1 (AAM/AAD imm).
-    fields: Table 4-11 fields packed into byte 1. width == 0: field is absent.
-    operands: Operand order describes d == 0.
-      If d exists and decodes to 1, operands[0] and operands[1] are swapped.
-    width: Explicit width only when the encoding has no w field.
-    flags: Encoding metadata not represented by an explicit operand. */
 typedef Struct_(X8616_Encoding) {
 	X8616_BytePattern   header;
 	X8616_BytePattern   mod_rm;
@@ -186,12 +195,12 @@ typedef Struct_(X8616_Encoding) {
 	X8616_Op            op;
 };
 
-typedef Enum_(U1, X8616_Width) {
+typedef Enum_(U1, X8616_Width) { // Table 4-7 W
 	x8616_w_byte = 0b0,
 	x8616_w_word = 0b1,
 };
 
-typedef Enum_(U1, X8616_Direction) {
+typedef Enum_(U1, X8616_Direction) { // Table 4-7 D: REG is dest when 1
 	x8616_d_rm_dst  = 0b0,
 	x8616_d_reg_dst = 0b1,
 	x8616_d_acc_dst = x8616_d_rm_dst,
@@ -199,17 +208,17 @@ typedef Enum_(U1, X8616_Direction) {
 	x8616_d_seg_dst = x8616_d_reg_dst,
 };
 
-typedef Enum_(U1, X8616_Sign) {
+typedef Enum_(U1, X8616_Sign) { // Table 4-7 S
 	x8616_s_full   = 0b0,
 	x8616_s_extend = 0b1,
 };
 
-typedef Enum_(U1, X8616_VariableShift) {
+typedef Enum_(U1, X8616_VariableShift) { // Table 4-7 V
 	x8616_v_one = 0b0,
 	x8616_v_cl  = 0b1,
 };
 
-typedef Enum_(U1, X8616_Repeat) {
+typedef Enum_(U1, X8616_Repeat) { // Table 4-7 Z
 	x8616_repne = 0b0,
 	x8616_rep   = 0b1,
 };
@@ -250,7 +259,7 @@ typedef Enum_(U1, X8616_Segment) {
 	x8616_ds = 0b11,
 };
 
-/* Table 4-12 B(110) / B(111) beside SR. Not opcode, not the SR field. */
+// Table 4-12 B(110) / B(111) beside SR.
 typedef Enum_(U1, X8616_SRLow) {
 	x8616_sr_low_push = 0b110,
 	x8616_sr_low_pop  = 0b111,
@@ -268,7 +277,7 @@ typedef Enum_(U1, X8616_EA) {
 	x8616_ea_bx     = 0b111,
 };
 
-typedef Enum_(U1, X8616_ALU) {
+typedef Enum_(U1, X8616_ALU) { // ttt in 00 ttt 0 d w  and  00 ttt 10 w
 	x8616_add = 0b000,
 	x8616_or  = 0b001,
 	x8616_adc = 0b010,
@@ -290,7 +299,7 @@ RO_ global X8616_Op x8616_op_from_alu[] = {
 	[x8616_cmp] = x8616_op_cmp,
 };
 
-typedef Enum_(U1, X8616_Group3) {
+typedef Enum_(U1, X8616_Group3) { // ModR/M /digit of 1111011 w
 	x8616_g3_test = 0b000,
 	x8616_g3_not  = 0b010,
 	x8616_g3_neg  = 0b011,
@@ -300,12 +309,12 @@ typedef Enum_(U1, X8616_Group3) {
 	x8616_g3_idiv = 0b111,
 };
 
-typedef Enum_(U1, X8616_IncDec) {
+typedef Enum_(U1, X8616_IncDec) { // /0 /1 of 1111111 w
 	x8616_inc = 0b000,
 	x8616_dec = 0b001,
 };
 
-typedef Enum_(U1, X8616_GroupFF) {
+typedef Enum_(U1, X8616_GroupFF) { // /2../6 of 1111111 w=1
 	x8616_ff_call_near = 0b010,
 	x8616_ff_call_far  = 0b011,
 	x8616_ff_jmp_near  = 0b100,
@@ -313,7 +322,7 @@ typedef Enum_(U1, X8616_GroupFF) {
 	x8616_ff_push      = 0b110,
 };
 
-typedef Enum_(U1, X8616_Shift) {
+typedef Enum_(U1, X8616_Shift) { // /digit of 110100 v w
 	x8616_rol = 0b000,
 	x8616_ror = 0b001,
 	x8616_rcl = 0b010,
@@ -334,7 +343,7 @@ RO_ global X8616_Op x8616_op_from_shift[] = {
 	[x8616_sar] = x8616_op_sar,
 };
 
-typedef Enum_(U1, X8616_Condition) {
+typedef Enum_(U1, X8616_Condition) { // cccc of 0111 cccc
 	x8616_cc_o   = 0b0000,
 	x8616_cc_no  = 0b0001,
 	x8616_cc_b   = 0b0010,
@@ -376,104 +385,142 @@ typedef Enum_(U1, X8616_Digit) {
 	x8616_digit_0 = 0b000,
 };
 
-/* Table 4-12 identifying bits. Width is however many bits Intel printed
-   before d/w/reg/cccc. Not a constructed header byte.
-   INC register = 01000, not 0x40. HLT = 11110100 (opcode fills byte 1). */
-typedef Enum_(U1, X8616_Opcode) {
-	x8616_opcode_mov_rm_r     = 0b100010,
-	x8616_opcode_mov_rm_i     = 0b1100011,
-	x8616_opcode_mov_r_i      = 0b1011,
-	x8616_opcode_mov_acc_mem  = 0b101000,
-	x8616_opcode_mov_seg_rm   = 0b100011,
+enum { // hole = low-bit field width in byte 1
+	X8616_OPCODE_DW_W_SHIFT = 0,
+	X8616_OPCODE_DW_D_SHIFT = 1,
+	X8616_OPCODE_DW_HOLE    = X8616_OPCODE_DW_D_SHIFT + 1,
 
-	x8616_opcode_push_reg     = 0b01010,
-	x8616_opcode_pop_reg      = 0b01011,
-	x8616_opcode_xchg_rm_r    = 0b1000011,
-	x8616_opcode_xchg_ax_reg  = 0b10010,
+	X8616_OPCODE_SW_W_SHIFT = 0,
+	X8616_OPCODE_SW_S_SHIFT = 1,
+	X8616_OPCODE_SW_HOLE    = X8616_OPCODE_SW_S_SHIFT + 1,
 
-	x8616_opcode_in_i         = 0b1110010,
-	x8616_opcode_in_dx        = 0b1110110,
-	x8616_opcode_out_i        = 0b1110011,
-	x8616_opcode_out_dx       = 0b1110111,
+	X8616_OPCODE_VW_W_SHIFT = 0,
+	X8616_OPCODE_VW_V_SHIFT = 1,
+	X8616_OPCODE_VW_HOLE    = X8616_OPCODE_VW_V_SHIFT + 1,
 
-	x8616_opcode_alu_rm_i     = 0b100000,
-	x8616_opcode_incdec_rm    = 0b1111111,
-	x8616_opcode_inc_reg      = 0b01000,
-	x8616_opcode_dec_reg      = 0b01001,
-	x8616_opcode_group3       = 0b1111011,
-	x8616_opcode_shift_rm     = 0b110100,
-	x8616_opcode_test_rm_r    = 0b1000010,
-	x8616_opcode_test_acc_i   = 0b1010100,
+	X8616_OPCODE_Z_Z_SHIFT = 0,
+	X8616_OPCODE_Z_HOLE    = X8616_OPCODE_Z_Z_SHIFT + 1,
 
-	x8616_opcode_rep          = 0b1111001,
-	x8616_opcode_movs         = 0b1010010,
-	x8616_opcode_cmps         = 0b1010011,
-	x8616_opcode_scas         = 0b1010111,
-	x8616_opcode_lods         = 0b1010110,
-	x8616_opcode_stos         = 0b1010101,
+	X8616_OPCODE_W_W_SHIFT = 0,
+	X8616_OPCODE_W_HOLE    = X8616_OPCODE_W_W_SHIFT + 1,
 
-	x8616_opcode_jcc          = 0b0111,
+	X8616_OPCODE_REG_REG_SHIFT = 0,
+	X8616_OPCODE_REG_REG_WIDTH = 3,
+	X8616_OPCODE_REG_HOLE      = X8616_OPCODE_REG_REG_SHIFT + X8616_OPCODE_REG_REG_WIDTH,
 
-	/* Table 4-12: B(000) SR B(110/111), B(001) SR B(110). Class bits only. */
-	x8616_opcode_sr_stack     = 0b000,
-	x8616_opcode_sr_override  = 0b001,
+	X8616_OPCODE_WREG_REG_SHIFT = 0,
+	X8616_OPCODE_WREG_REG_WIDTH = 3,
+	X8616_OPCODE_WREG_W_SHIFT   = X8616_OPCODE_WREG_REG_SHIFT + X8616_OPCODE_WREG_REG_WIDTH,
+	X8616_OPCODE_WREG_HOLE      = X8616_OPCODE_WREG_W_SHIFT + 1,
 
-	x8616_opcode_pop_rm     = 0b10001111,
-	x8616_opcode_xlat       = 0b11010111,
-	x8616_opcode_lea        = 0b10001101,
-	x8616_opcode_lds        = 0b11000101,
-	x8616_opcode_les        = 0b11000100,
-	x8616_opcode_lahf       = 0b10011111,
-	x8616_opcode_sahf       = 0b10011110,
-	x8616_opcode_pushf      = 0b10011100,
-	x8616_opcode_popf       = 0b10011101,
+	X8616_OPCODE_D0_D_SHIFT = 1,
+	X8616_OPCODE_D0_HOLE    = X8616_OPCODE_D0_D_SHIFT + 1,
 
-	x8616_opcode_aaa        = 0b00110111,
-	x8616_opcode_daa        = 0b00100111,
-	x8616_opcode_aas        = 0b00111111,
-	x8616_opcode_das        = 0b00101111,
-	x8616_opcode_aam        = 0b11010100,
-	x8616_opcode_aad        = 0b11010101,
-	x8616_opcode_cbw        = 0b10011000,
-	x8616_opcode_cwd        = 0b10011001,
+	X8616_OPCODE_SR_CLASS_SHIFT = 5,
 
-	x8616_opcode_call_rel16 = 0b11101000,
-	x8616_opcode_call_far   = 0b10011010,
-	x8616_opcode_jmp_rel16  = 0b11101001,
-	x8616_opcode_jmp_rel8   = 0b11101011,
-	x8616_opcode_jmp_far    = 0b11101010,
-	x8616_opcode_ret        = 0b11000011,
-	x8616_opcode_ret_i      = 0b11000010,
-	x8616_opcode_retf       = 0b11001011,
-	x8616_opcode_retf_i     = 0b11001010,
+	X8616_OPCODE_CC_WIDTH = 4,
+	X8616_OPCODE_CC_HOLE  = X8616_OPCODE_CC_WIDTH,
+};
 
-	x8616_opcode_loopnz     = 0b11100000,
-	x8616_opcode_loopz      = 0b11100001,
-	x8616_opcode_loop       = 0b11100010,
-	x8616_opcode_jcxz       = 0b11100011,
+typedef Enum_(U1, X8616_Opcode) { /* identifying bits: fields-zeroed header >> hole */
+	x8616_opcode_mov_rm_r     = x8616_opcode_in(0b10001000, X8616_OPCODE_DW_HOLE),   // 100010 d w
+	x8616_opcode_mov_rm_i     = x8616_opcode_in(0b11000110, X8616_OPCODE_W_HOLE),    // 1100011 w
+	x8616_opcode_mov_r_i      = x8616_opcode_in(0b10110000, X8616_OPCODE_WREG_HOLE), // 1011 w reg
+	x8616_opcode_mov_acc_mem  = x8616_opcode_in(0b10100000, X8616_OPCODE_DW_HOLE),   // 101000 d w
+	x8616_opcode_mov_seg_rm   = x8616_opcode_in(0b10001100, X8616_OPCODE_D0_HOLE),   // 100011 d 0
 
-	x8616_opcode_int        = 0b11001101,
-	x8616_opcode_int3       = 0b11001100,
-	x8616_opcode_into       = 0b11001110,
-	x8616_opcode_iret       = 0b11001111,
+	x8616_opcode_push_reg     = x8616_opcode_in(0b01010000, X8616_OPCODE_REG_HOLE),  // 01010 reg
+	x8616_opcode_pop_reg      = x8616_opcode_in(0b01011000, X8616_OPCODE_REG_HOLE),  // 01011 reg
+	x8616_opcode_xchg_rm_r    = x8616_opcode_in(0b10000110, X8616_OPCODE_W_HOLE),    // 1000011 w
+	x8616_opcode_xchg_ax_reg  = x8616_opcode_in(0b10010000, X8616_OPCODE_REG_HOLE),  // 10010 reg
 
-	x8616_opcode_clc        = 0b11111000,
-	x8616_opcode_cmc        = 0b11110101,
-	x8616_opcode_stc        = 0b11111001,
-	x8616_opcode_cld        = 0b11111100,
-	x8616_opcode_std        = 0b11111101,
-	x8616_opcode_cli        = 0b11111010,
-	x8616_opcode_sti        = 0b11111011,
-	x8616_opcode_hlt        = 0b11110100,
-	x8616_opcode_wait       = 0b10011011,
-	x8616_opcode_lock       = 0b11110000,
+	x8616_opcode_in_i         = x8616_opcode_in(0b11100100, X8616_OPCODE_W_HOLE),    // 1110010 w
+	x8616_opcode_in_dx        = x8616_opcode_in(0b11101100, X8616_OPCODE_W_HOLE),    // 1110110 w
+	x8616_opcode_out_i        = x8616_opcode_in(0b11100110, X8616_OPCODE_W_HOLE),    // 1110011 w
+	x8616_opcode_out_dx       = x8616_opcode_in(0b11101110, X8616_OPCODE_W_HOLE),    // 1110111 w
+
+	x8616_opcode_alu_rm_i     = x8616_opcode_in(0b10000000, X8616_OPCODE_SW_HOLE),   // 100000 s w
+	x8616_opcode_incdec_rm    = x8616_opcode_in(0b11111110, X8616_OPCODE_W_HOLE),    // 1111111 w
+	x8616_opcode_inc_reg      = x8616_opcode_in(0b01000000, X8616_OPCODE_REG_HOLE),  // 01000 reg
+	x8616_opcode_dec_reg      = x8616_opcode_in(0b01001000, X8616_OPCODE_REG_HOLE),  // 01001 reg
+	x8616_opcode_group3       = x8616_opcode_in(0b11110110, X8616_OPCODE_W_HOLE),    // 1111011 w
+	x8616_opcode_shift_rm     = x8616_opcode_in(0b11010000, X8616_OPCODE_VW_HOLE),   // 110100 v w
+	x8616_opcode_test_rm_r    = x8616_opcode_in(0b10000100, X8616_OPCODE_W_HOLE),    // 1000010 w
+	x8616_opcode_test_acc_i   = x8616_opcode_in(0b10101000, X8616_OPCODE_W_HOLE),    // 1010100 w
+
+	x8616_opcode_rep          = x8616_opcode_in(0b11110010, X8616_OPCODE_Z_HOLE),    // 1111001 z
+	x8616_opcode_movs         = x8616_opcode_in(0b10100100, X8616_OPCODE_W_HOLE),    // 1010010 w
+	x8616_opcode_cmps         = x8616_opcode_in(0b10100110, X8616_OPCODE_W_HOLE),
+	x8616_opcode_scas         = x8616_opcode_in(0b10101110, X8616_OPCODE_W_HOLE),
+	x8616_opcode_lods         = x8616_opcode_in(0b10101100, X8616_OPCODE_W_HOLE),
+	x8616_opcode_stos         = x8616_opcode_in(0b10101010, X8616_OPCODE_W_HOLE),
+
+	x8616_opcode_jcc          = x8616_opcode_in(0b01110000, X8616_OPCODE_CC_HOLE),   // 0111 cccc
+
+	x8616_opcode_sr_stack     = x8616_opcode_in(0b00000110, X8616_OPCODE_SR_CLASS_SHIFT), // 000 sr 110
+	x8616_opcode_sr_override  = x8616_opcode_in(0b00100110, X8616_OPCODE_SR_CLASS_SHIFT), // 001 sr 110
+
+	x8616_opcode_pop_rm     = x8616_opcode_in(0b10001111, 0),
+	x8616_opcode_xlat       = x8616_opcode_in(0b11010111, 0),
+	x8616_opcode_lea        = x8616_opcode_in(0b10001101, 0),
+	x8616_opcode_lds        = x8616_opcode_in(0b11000101, 0),
+	x8616_opcode_les        = x8616_opcode_in(0b11000100, 0),
+	x8616_opcode_lahf       = x8616_opcode_in(0b10011111, 0),
+	x8616_opcode_sahf       = x8616_opcode_in(0b10011110, 0),
+	x8616_opcode_pushf      = x8616_opcode_in(0b10011100, 0),
+	x8616_opcode_popf       = x8616_opcode_in(0b10011101, 0),
+
+	x8616_opcode_aaa        = x8616_opcode_in(0b00110111, 0),
+	x8616_opcode_daa        = x8616_opcode_in(0b00100111, 0),
+	x8616_opcode_aas        = x8616_opcode_in(0b00111111, 0),
+	x8616_opcode_das        = x8616_opcode_in(0b00101111, 0),
+	x8616_opcode_aam        = x8616_opcode_in(0b11010100, 0),
+	x8616_opcode_aad        = x8616_opcode_in(0b11010101, 0),
+	x8616_opcode_cbw        = x8616_opcode_in(0b10011000, 0),
+	x8616_opcode_cwd        = x8616_opcode_in(0b10011001, 0),
+
+	x8616_opcode_call_rel16 = x8616_opcode_in(0b11101000, 0),
+	x8616_opcode_call_far   = x8616_opcode_in(0b10011010, 0),
+	x8616_opcode_jmp_rel16  = x8616_opcode_in(0b11101001, 0),
+	x8616_opcode_jmp_rel8   = x8616_opcode_in(0b11101011, 0),
+	x8616_opcode_jmp_far    = x8616_opcode_in(0b11101010, 0),
+	x8616_opcode_ret        = x8616_opcode_in(0b11000011, 0),
+	x8616_opcode_ret_i      = x8616_opcode_in(0b11000010, 0),
+	x8616_opcode_retf       = x8616_opcode_in(0b11001011, 0),
+	x8616_opcode_retf_i     = x8616_opcode_in(0b11001010, 0),
+
+	x8616_opcode_loopnz     = x8616_opcode_in(0b11100000, 0),
+	x8616_opcode_loopz      = x8616_opcode_in(0b11100001, 0),
+	x8616_opcode_loop       = x8616_opcode_in(0b11100010, 0),
+	x8616_opcode_jcxz       = x8616_opcode_in(0b11100011, 0),
+
+	x8616_opcode_int        = x8616_opcode_in(0b11001101, 0),
+	x8616_opcode_int3       = x8616_opcode_in(0b11001100, 0),
+	x8616_opcode_into       = x8616_opcode_in(0b11001110, 0),
+	x8616_opcode_iret       = x8616_opcode_in(0b11001111, 0),
+
+	x8616_opcode_clc        = x8616_opcode_in(0b11111000, 0),
+	x8616_opcode_cmc        = x8616_opcode_in(0b11110101, 0),
+	x8616_opcode_stc        = x8616_opcode_in(0b11111001, 0),
+	x8616_opcode_cld        = x8616_opcode_in(0b11111100, 0),
+	x8616_opcode_std        = x8616_opcode_in(0b11111101, 0),
+	x8616_opcode_cli        = x8616_opcode_in(0b11111010, 0),
+	x8616_opcode_sti        = x8616_opcode_in(0b11111011, 0),
+	x8616_opcode_hlt        = x8616_opcode_in(0b11110100, 0),
+	x8616_opcode_wait       = x8616_opcode_in(0b10011011, 0),
+	x8616_opcode_lock       = x8616_opcode_in(0b11110000, 0),
 };
 
 enum {
 	X8616_OPCODE_BIT_WIDTH = 1,
 	X8616_BYTE_MASK        = x8616_field_mask(0, 8),
 
-	X8616_POST_OPCODE_AAM_AAD = 0b00001010,
+	X8616_POST_OPCODE_AAM_AAD = 0b00001010, // AAM/AAD immediate 00001010
+
+/* Hole = field width in the low bits of byte 1.
+   header = (opcode << HOLE) | fields
+   OPCODE_MASK = bits of the header that are opcode.
+*/
 
 // ModR/M:
 //  7 6   5 4 3   2 1 0
@@ -497,82 +544,30 @@ enum {
 	X8616_MODRM_SEG_FIXED_BIT  = 5,
 	X8616_MODRM_SEG_FIXED_MASK = x8616_field_mask(X8616_MODRM_SEG_FIXED_BIT, 1),
 
-// ... d w
-
-	X8616_OPCODE_DW_W_SHIFT      = 0,
-	X8616_OPCODE_DW_D_SHIFT      = 1,
-	X8616_OPCODE_DW_HOLE = X8616_OPCODE_DW_D_SHIFT + 1,
-	X8616_OPCODE_DW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_DW_HOLE),
-
-// ... s w
-
-	X8616_OPCODE_SW_W_SHIFT      = 0,
-	X8616_OPCODE_SW_S_SHIFT      = 1,
-	X8616_OPCODE_SW_HOLE = X8616_OPCODE_SW_S_SHIFT + 1,
-	X8616_OPCODE_SW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_SW_HOLE),
-
-// ... v w
-
-	X8616_OPCODE_VW_W_SHIFT      = 0,
-	X8616_OPCODE_VW_V_SHIFT      = 1,
-	X8616_OPCODE_VW_HOLE = X8616_OPCODE_VW_V_SHIFT + 1,
-	X8616_OPCODE_VW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_VW_HOLE),
-
-// ... z
-
-	X8616_OPCODE_Z_Z_SHIFT      = 0,
-	X8616_OPCODE_Z_HOLE = X8616_OPCODE_Z_Z_SHIFT + 1,
-	X8616_OPCODE_Z_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_Z_HOLE),
-
-// ... w
-
-	X8616_OPCODE_W_W_SHIFT      = 0,
-	X8616_OPCODE_W_HOLE = X8616_OPCODE_W_W_SHIFT + 1,
-	X8616_OPCODE_W_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_W_HOLE),
-
-// ... reg
-
-	X8616_OPCODE_REG_REG_SHIFT    = 0,
-	X8616_OPCODE_REG_REG_WIDTH    = 3,
+	X8616_OPCODE_DW_OPCODE_MASK   = x8616_header_opcode_mask(X8616_OPCODE_DW_HOLE),
+	X8616_OPCODE_SW_OPCODE_MASK   = x8616_header_opcode_mask(X8616_OPCODE_SW_HOLE),
+	X8616_OPCODE_VW_OPCODE_MASK   = x8616_header_opcode_mask(X8616_OPCODE_VW_HOLE),
+	X8616_OPCODE_Z_OPCODE_MASK    = x8616_header_opcode_mask(X8616_OPCODE_Z_HOLE),
+	X8616_OPCODE_W_OPCODE_MASK    = x8616_header_opcode_mask(X8616_OPCODE_W_HOLE),
 	X8616_OPCODE_REG_REG_MASK     = x8616_field_mask(X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH),
-	X8616_OPCODE_REG_HOLE = X8616_OPCODE_REG_REG_SHIFT + X8616_OPCODE_REG_REG_WIDTH,
 	X8616_OPCODE_REG_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_REG_HOLE),
-
-// ... w reg
-
-	X8616_OPCODE_WREG_REG_SHIFT    = 0,
-	X8616_OPCODE_WREG_REG_WIDTH    = 3,
-	X8616_OPCODE_WREG_REG_MASK     = x8616_field_mask(X8616_OPCODE_WREG_REG_SHIFT, X8616_OPCODE_WREG_REG_WIDTH),
-	X8616_OPCODE_WREG_W_SHIFT      = X8616_OPCODE_WREG_REG_SHIFT + X8616_OPCODE_WREG_REG_WIDTH,
-	X8616_OPCODE_WREG_W_MASK       = x8616_field_mask(X8616_OPCODE_WREG_W_SHIFT, 1),
-	X8616_OPCODE_WREG_HOLE = X8616_OPCODE_WREG_W_SHIFT + 1,
-	X8616_OPCODE_WREG_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_WREG_HOLE),
-
-// ... d 0  (bit 0 fixed, bit 1 = d, bits 7-2 = stem)
-
-	X8616_OPCODE_D0_D_SHIFT      = 1,
-	X8616_OPCODE_D0_HOLE = X8616_OPCODE_D0_D_SHIFT + 1,
-	X8616_OPCODE_D0_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_D0_HOLE) | x8616_field_mask(0, 1),
-
-// class(3) | sr(2) | low(3)
+	X8616_OPCODE_WREG_REG_MASK    = x8616_field_mask(X8616_OPCODE_WREG_REG_SHIFT, X8616_OPCODE_WREG_REG_WIDTH),
+	X8616_OPCODE_WREG_W_MASK      = x8616_field_mask(X8616_OPCODE_WREG_W_SHIFT, 1),
+	X8616_OPCODE_WREG_OPCODE_MASK = x8616_header_opcode_mask(X8616_OPCODE_WREG_HOLE),
+	X8616_OPCODE_D0_OPCODE_MASK   = x8616_header_opcode_mask(X8616_OPCODE_D0_HOLE) | x8616_field_mask(0, 1),
 
 	X8616_OPCODE_SR_LOW_SHIFT    = 0,
 	X8616_OPCODE_SR_LOW_WIDTH    = 3,
 	X8616_OPCODE_SR_SHIFT        = 3,
 	X8616_OPCODE_SR_WIDTH        = 2,
-	X8616_OPCODE_SR_CLASS_SHIFT  = 5,
 	X8616_OPCODE_SR_CLASS_WIDTH  = 3,
 	X8616_OPCODE_SR_MASK         = x8616_field_mask(X8616_OPCODE_SR_SHIFT, X8616_OPCODE_SR_WIDTH),
 	X8616_OPCODE_SR_PATTERN_MASK = u1_(~X8616_OPCODE_SR_MASK),
 
-// 0111 cccc
-
 	X8616_OPCODE_CC_SHIFT        = 0,
-	X8616_OPCODE_CC_WIDTH        = 4,
 	X8616_OPCODE_CC_MASK         = x8616_field_mask(X8616_OPCODE_CC_SHIFT, X8616_OPCODE_CC_WIDTH),
-	X8616_OPCODE_CC_HOLE = X8616_OPCODE_CC_WIDTH,
 
-// 00 ttt ...
+// 00 ttt ...   class + form live in the matcher
 
 	X8616_OPCODE_ALU_CLASS       = 0b00,
 	X8616_OPCODE_ALU_CLASS_SHIFT = 6,
@@ -611,7 +606,8 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 // };
 // ============================================================================
 
-// Byte fields
+// Shift opcode into the hole, then OR fields:
+// x8616_enc_dw(mov_rm_r, d, w)  →  100010 d w
 
 #define x8616_enc_dw_opcode(opcode)   ((opcode) << X8616_OPCODE_DW_HOLE)
 #define x8616_enc_sw_opcode(opcode)   ((opcode) << X8616_OPCODE_SW_HOLE)
@@ -650,10 +646,13 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_enc_modrm(mod,reg,rm)    C_(U1, x8616_enc_modrm_mod(mod) | x8616_enc_modrm_reg(reg) | x8616_enc_modrm_rm(rm))
 #define x8616_enc_modrm_seg(mod,sr,rm) C_(U1, x8616_enc_modrm_mod(mod) | x8616_enc_modrm_sr(sr)   | x8616_enc_modrm_rm(rm))
 
+// Catalog matchers. header_w: PUSH r/m is incdec_rm + w=1.
+// header_d0: MOV sreg 100011 d 0. header_sr: 000 sr 110.
 #define x8616_header_w(opcode,w)   ((X8616_BytePattern){ x8616_enc_w((opcode), (w)), X8616_BYTE_MASK })
 #define x8616_header_sr(class,low) ((X8616_BytePattern){ u1_(((class) << X8616_OPCODE_SR_CLASS_SHIFT) | (low)), X8616_OPCODE_SR_PATTERN_MASK })
 #define x8616_header_d0(opcode)    ((X8616_BytePattern){ u1_((opcode) << X8616_OPCODE_D0_HOLE), X8616_OPCODE_D0_OPCODE_MASK })
 
+// 00 ttt 0 d w   and   00 ttt 10 w. Class + ttt + form.
 #define x8616_enc_alu_class()              (X8616_OPCODE_ALU_CLASS << X8616_OPCODE_ALU_CLASS_SHIFT)
 #define x8616_enc_alu_ttt(ttt)             ((ttt) << X8616_OPCODE_ALU_TTT_SHIFT)
 #define x8616_enc_alu_op(alu)              x8616_enc_alu_ttt(alu)
@@ -708,9 +707,9 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_emit_seg_rm_d16(d,sr,rm,disp) x8616_emit_seg_rm(d,x8616_mod_mem_d16,sr,rm),          x8616_emit_s2(disp)
 #define x8616_emit_seg_rm_direct(d,sr,addr) x8616_emit_seg_rm(d,x8616_mod_mem,sr,x8616_ea_direct), x8616_emit_u2(addr)
 
-// MOV
+// MOV — Table 4-12 100010 d w / 1011 w reg / 101000 d w / 100011 d 0
 
-#define x8616_nop()                 x8616_enc_reg    (x8616_opcode_xchg_ax_reg, x8616_ax)
+#define x8616_nop()                 x8616_enc_reg    (x8616_opcode_xchg_ax_reg, x8616_ax) /* 10010 000 */
 #define x8616_mov_r8_r8(dst,src)    x8616_emit_rm_r  (x8616_opcode_mov_rm_r,x8616_d_reg_dst,x8616_w_byte,x8616_mod_reg,dst,src)
 #define x8616_mov_r16_r16(dst,src)  x8616_emit_rm_r  (x8616_opcode_mov_rm_r,x8616_d_reg_dst,x8616_w_word,x8616_mod_reg,dst,src)
 #define x8616_mov_r8_i(dst,imm)     x8616_enc_wreg   (x8616_opcode_mov_r_i,x8616_w_byte,dst),                 u1_(imm)
@@ -722,7 +721,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_mov_rm_seg(mod,rm,sr) x8616_emit_seg_rm(x8616_d_rm_dst,mod,sr,rm)
 #define x8616_mov_seg_rm(sr,mod,rm) x8616_emit_seg_rm(x8616_d_seg_dst,mod,sr,rm)
 
-// Stack / exchange
+// Stack — 01010 reg / 000 sr 110 / PUSH r/m = 1111111 w=1 /6
 
 #define x8616_push_r16(reg)   x8616_enc_reg   (x8616_opcode_push_reg,reg)
 #define x8616_pop_r16(reg)    x8616_enc_reg   (x8616_opcode_pop_reg,reg)
@@ -755,7 +754,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_pushf()         x8616_emit_op(x8616_opcode_pushf)
 #define x8616_popf()          x8616_emit_op(x8616_opcode_popf)
 
-// Arithmetic / logical
+// Arithmetic — 00 ttt 0 d w  /  00 ttt 10 w  /  100000 s w /ttt
 
 #define x8616_emit_alu_r8_r8(alu,dst,src)   x8616_enc_alu_rm_r (alu,x8616_d_reg_dst,x8616_w_byte), x8616_enc_modrm(x8616_mod_reg,dst,src)
 #define x8616_emit_alu_r16_r16(alu,dst,src) x8616_enc_alu_rm_r (alu,x8616_d_reg_dst,x8616_w_word), x8616_enc_modrm(x8616_mod_reg,dst,src)
@@ -806,7 +805,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_cmp_r16_i(dst,imm)   x8616_emit_alu_r16_i  (x8616_cmp,dst,imm)
 #define x8616_cmp_r16_i8s(dst,imm) x8616_emit_alu_r16_i8s(x8616_cmp,dst,imm)
 
-// INC / DEC / unary
+// INC/DEC — 01000 reg / 1111111 w /0 /1. Unary — 1111011 w /digit
 
 #define x8616_inc_r16(reg)     x8616_enc_reg(x8616_opcode_inc_reg,reg)
 #define x8616_dec_r16(reg)     x8616_enc_reg(x8616_opcode_dec_reg,reg)
@@ -830,7 +829,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_cbw() x8616_emit_op   (x8616_opcode_cbw)
 #define x8616_cwd() x8616_emit_op   (x8616_opcode_cwd)
 
-// Shift / rotate / TEST
+// Shift — 110100 v w /ttt. TEST r/m,imm is group3 /0
 
 #define x8616_shift_rm(shift,v,w,mod,rm) x8616_emit_modrm(x8616_enc_vw(x8616_opcode_shift_rm,v,w),mod,shift,rm)
 #define x8616_shl_r8_1(reg)              x8616_shift_rm(x8616_shl,x8616_v_one,x8616_w_byte,x8616_mod_reg,reg)
@@ -845,7 +844,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_test_al_i(imm)      x8616_enc_w(x8616_opcode_test_acc_i,x8616_w_byte), u1_(imm)
 #define x8616_test_ax_i(imm)      x8616_enc_w(x8616_opcode_test_acc_i,x8616_w_word), x8616_emit_u2(imm)
 
-// String / prefixes
+// Prefix = prior byte: 1111001 z / 11110000 / 001 sr 110
 
 #define x8616_rep_prefix()        x8616_enc_zp (x8616_opcode_rep,x8616_rep)
 #define x8616_repne_prefix()      x8616_enc_zp (x8616_opcode_rep,x8616_repne)
@@ -862,7 +861,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_lock_prefix()       x8616_emit_op(x8616_opcode_lock)
 #define x8616_segment_prefix(seg) x8616_enc_sr (x8616_opcode_sr_override,seg,x8616_sr_low_push)
 
-// Control transfer
+// CALL/JMP r/m — same 1111111 w=1 as INC r/m, /digit 010..101
 
 #define x8616_call_rel16(rel)     x8616_emit_op_i16(x8616_opcode_call_rel16,rel)
 #define x8616_call_far(seg,off)   x8616_emit_op_far(x8616_opcode_call_far,seg,off)

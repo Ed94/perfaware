@@ -10,7 +10,7 @@
 // Later Part 1 simulation listings use a subset of this table.
 //
 // Table 4-12: .header is byte 1 (opcode bits aligned, fields masked).
-// Opcode enums are the identifying bits, not that byte.
+// X8616_Opcode members are the identifying bits.
 // ModR/M /digit selectors use their encoded enumeration values.
 // =========================================================================================
 
