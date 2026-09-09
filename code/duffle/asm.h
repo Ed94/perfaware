@@ -110,14 +110,10 @@ FI_ U4 find_aos_keys_mask_u8x4(U8_R p0, U8_R p1, U8_R p2, U8_R p3, U8 key) {
 	U8x4 keys, splat, eq;
 	U4   mask;
 	asm volatile(
-		x64_u8x2_load_u8  (lo, p0)
-		x64_u8x2_insert_u8(lo, p1, 1)
-		x64_u8x2_load_u8  (hi, p2)
-		x64_u8x2_insert_u8(hi, p3, 1)
-		x64_u8x4_insert_xmm(keys, lo, 0)
-		x64_u8x4_insert_xmm(keys, hi, 1)
-		x64_u8x4_broadcast(splat, key)
-		x64_u8x4_match(eq, keys, splat)
+		x64_u8x2_load_u8  (lo, p0)       x64_u8x2_insert_u8(lo, p1, 1)
+		x64_u8x2_load_u8  (hi, p2)       x64_u8x2_insert_u8(hi, p3, 1)
+		x64_u8x4_insert_xmm(keys, lo, 0) x64_u8x4_insert_xmm(keys, hi, 1)
+		x64_u8x4_broadcast(splat, key)   x64_u8x4_match(eq, keys, splat)
 		x64_u4_from_qword_hits(mask, eq)
 		asm_out : asm_out_x(lo), asm_out_x(hi), asm_out_x(keys), asm_out_x(splat), asm_out_x(eq), asm_out_r(mask)
 		asm_in  : asm_in_r(p0), asm_in_r(p1), asm_in_r(p2), asm_in_r(p3), asm_in_r(key)
