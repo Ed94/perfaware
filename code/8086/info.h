@@ -51,7 +51,7 @@ typedef Struct_(X8616_InfoMsg) {
    The decoder itself never expands these. */
 RO_ global Str8 x8616_info_templates[x8616_info_count] = {
 	[x8616_info_none]                       = slit8(""),
-	[x8616_info_invalid_opcode]             = slit8("Opcode <actual> is not in the Part 1 8086 decode table at <offset>."),
+	[x8616_info_invalid_opcode]             = slit8("Header <actual> is not in the Part 1 8086 decode table at <offset>."),
 	[x8616_info_invalid_opcode_extension]   = slit8("Opcode extension <actual> does not match the selected encoding at <offset>."),
 	[x8616_info_invalid_post_opcode]        = slit8("Post-opcode byte <actual> does not match expected <expected> at <offset>."),
 	[x8616_info_truncated_instruction]      = slit8("Instruction at <offset> needs <expected> bytes; <actual> are available."),
@@ -59,8 +59,8 @@ RO_ global Str8 x8616_info_templates[x8616_info_count] = {
 	[x8616_info_gen_multiple_payloads]      = slit8("Encoding <offset> describes more than one stream payload."),
 	[x8616_info_gen_body_cap_exceeded]      = slit8("Encoding <offset> requires <actual> body bytes; decoder body capacity is <expected>."),
 	[x8616_info_gen_aux_cap_exceeded]       = slit8("Generated auxiliary decode table exceeds capacity <expected>."),
-	[x8616_info_gen_ambiguous_decode]       = slit8("Decode is ambiguous for opcode/second-byte key <offset>: plans <expected> and <actual>."),
-	[x8616_info_gen_dispatch_mismatch]      = slit8("Generated dispatch mismatch for opcode/second-byte key <offset>: expected <expected>, actual <actual>."),
+	[x8616_info_gen_ambiguous_decode]       = slit8("Decode is ambiguous for header/second-byte key <offset>: plans <expected> and <actual>."),
+	[x8616_info_gen_dispatch_mismatch]      = slit8("Generated dispatch mismatch for header/second-byte key <offset>: expected <expected>, actual <actual>."),
 	[x8616_info_serialize_bad_request]      = slit8("Serialize request is missing instructions, output, scratch, or info arena."),
 	[x8616_info_serialize_invalid_record]   = slit8("Serialize record <offset> is not printable (op <actual>)."),
 	[x8616_info_serialize_unsupported_form] = slit8("Serialize record <offset> has an unsupported display form (op <actual>)."),

@@ -26,7 +26,7 @@ typedef Struct_(X8616_DecodeGen) {
 	U1 aux[X8616_DECODE_GEN_MAX_AUX];
 
 	U4 aux_count;
-	U4 ambiguous_opcode_count;
+	U4 ambiguous_header_count;
 	U4 verified_count;
 
 	X8616_InfoList msgs;
@@ -35,7 +35,7 @@ typedef Struct_(X8616_DecodeGen) {
 typedef Struct_(X8616_DecodeGenInfo) {
 	U4 plan_count;
 	U4 aux_count;
-	U4 ambiguous_opcode_count;
+	U4 ambiguous_header_count;
 	U4 verified_count;
 
 	X8616_InfoList msgs;
@@ -99,9 +99,7 @@ x8616_decode_gen_plan(X8616_Encoding_R encoding, U4 encoding_idx, X8616_InfoList
 	if (encoding->fields.sr.width)  { plan.flags |= x8616_plan_has_sr;  plan.sr_shift  = encoding->fields.sr.shift; }
 	if (encoding->fields.alu.width) { plan.flags |= x8616_plan_has_alu;  plan.alu_shift  = encoding->fields.alu.shift; }
 	if (encoding->fields.cc.width)  { plan.flags |= x8616_plan_has_cc;   plan.cc_shift   = encoding->fields.cc.shift; }
-	if (encoding->fields.pair.width){ plan.flags |= x8616_plan_has_pair; plan.pair_shift = encoding->fields.pair.shift; }
 	plan.digit_kind = encoding->digit_kind;
-	plan.pair_kind  = encoding->pair_kind;
 
 	if (x8616_decode_gen_operand_uses_rm(encoding->operands[0]) || x8616_decode_gen_operand_uses_rm(encoding->operands[1]))
 		plan.flags |= x8616_plan_uses_rm;
@@ -145,8 +143,8 @@ x8616_decode_gen_plan(X8616_Encoding_R encoding, U4 encoding_idx, X8616_InfoList
 	return plan;
 }
 
-FI_ B4 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding_R encoding, U1 opcode) {
-	return (opcode & encoding->header.mask) == encoding->header.bits;
+FI_ B4 x8616_decode_gen_encoding_matches_header(X8616_Encoding_R encoding, U1 header) {
+	return (header & encoding->header.mask) == encoding->header.bits;
 }
 
 FI_ B4 x8616_decode_gen_plan_matches_second(X8616_DecodePlan_R plan, U1 byte) {
@@ -163,22 +161,22 @@ internal void x8616_decode_gen_pass_plans(X8616_DecodeGen* gen, FArena_R info_sc
 internal void
 x8616_decode_gen_pass_dispatch(X8616_DecodeGen* gen, FArena_R info_scratch)
 {
-	for (U4 opcode = 0; opcode < 256; ++ opcode)
+	for (U4 header = 0; header < 256; ++ header)
 	{
 		U1 candidates[X8616_ENCODING_COUNT];
 		U4 candidate_count = 0;
 
 		for (U4 encoding_idx = 0; encoding_idx < X8616_ENCODING_COUNT; ++ encoding_idx)
-			if (x8616_decode_gen_encoding_matches_opcode(x8616_encodings + encoding_idx, C_(U1, opcode)))
+			if (x8616_decode_gen_encoding_matches_header(x8616_encodings + encoding_idx, C_(U1, header)))
 				candidates[candidate_count ++] = C_(U1, encoding_idx + 1);
 
 		if (candidate_count == 0) continue;
-		if (candidate_count == 1) { gen->dispatch[opcode] = candidates[0]; continue; }
+		if (candidate_count == 1) { gen->dispatch[header] = candidates[0]; continue; }
 
 		if (gen->aux_count + 256 > X8616_DECODE_GEN_MAX_AUX) {
 			x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
 				, x8616_info_gen_aux_cap_exceeded
-				, opcode
+				, header
 				, 0
 				, X8616_DECODE_GEN_MAX_AUX
 				, gen->aux_count + 256
@@ -187,9 +185,9 @@ x8616_decode_gen_pass_dispatch(X8616_DecodeGen* gen, FArena_R info_scratch)
 		}
 
 		U4 base = gen->aux_count;
-		gen->dispatch[opcode]        = C_(U2, X8616_DECODE_AUX_BIT | base);
+		gen->dispatch[header]        = C_(U2, X8616_DECODE_AUX_BIT | base);
 		gen->aux_count              += 256;
-		gen->ambiguous_opcode_count += 1;
+		gen->ambiguous_header_count += 1;
 
 		for (U4 second = 0; second < 256; ++ second)
 		{
@@ -202,7 +200,7 @@ x8616_decode_gen_pass_dispatch(X8616_DecodeGen* gen, FArena_R info_scratch)
 
 				if (selected) x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
 					, x8616_info_gen_ambiguous_decode
-					, (opcode << 8) | second
+					, (header << 8) | second
 					, 0
 					, selected
 					, plan_idx
@@ -218,27 +216,27 @@ x8616_decode_gen_pass_dispatch(X8616_DecodeGen* gen, FArena_R info_scratch)
 internal void
 x8616_decode_gen_pass_validate(X8616_DecodeGen_R gen, FArena_R info_scratch)
 {
-	for (U4 opcode = 0; opcode < 256; ++ opcode)
+	for (U4 header = 0; header < 256; ++ header)
 	for (U4 second = 0; second < 256; ++ second)
 	{
 		U1 expected = 0; 
 		for (U4 encoding_idx = 0; encoding_idx < X8616_ENCODING_COUNT; ++ encoding_idx)
 		{
 			X8616_Encoding_R encoding = x8616_encodings + encoding_idx;
-			if (x8616_decode_gen_encoding_matches_opcode(encoding, C_(U1, opcode)) == false) continue;
+			if (x8616_decode_gen_encoding_matches_header(encoding, C_(U1, header)) == false) continue;
 
 			X8616_DecodePlan_R plan = gen->plans + encoding_idx + 1;
 			if (x8616_decode_gen_plan_matches_second(plan, C_(U1, second)) == false) continue;
 
 			if (expected) x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
 				, x8616_info_gen_ambiguous_decode
-				, (opcode << 8) | second, 0
+				, (header << 8) | second, 0
 				, expected, encoding_idx + 1
 			);
 			expected = C_(U1, encoding_idx + 1);
 		}
 
-		U2 dispatch = gen->dispatch[opcode];
+		U2 dispatch = gen->dispatch[header];
 		U1 actual   = 0;
 
 		if (dispatch & X8616_DECODE_AUX_BIT) {
@@ -253,7 +251,7 @@ x8616_decode_gen_pass_validate(X8616_DecodeGen_R gen, FArena_R info_scratch)
 
 		if (actual != expected) x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
 			, x8616_info_gen_dispatch_mismatch
-			, (opcode << 8) | second, 0
+			, (header << 8) | second, 0
 			, expected, actual
 		);
 		++ gen->verified_count;
@@ -270,7 +268,7 @@ x8616_decode_table_generate(X8616_DecodeGen* gen, FArena_R info_scratch) {
 	X8616_DecodeGenInfo result = {
 		.plan_count             = X8616_ENCODING_COUNT + 1,
 		.aux_count              = gen->aux_count,
-		.ambiguous_opcode_count = gen->ambiguous_opcode_count,
+		.ambiguous_header_count = gen->ambiguous_header_count,
 		.verified_count         = gen->verified_count,
 		.msgs                   = gen->msgs,
 	};
@@ -334,7 +332,7 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 			<d_shift>, <w_shift>, <s_shift>, <v_shift>, <z_shift>, <reg_shift>, <sr_shift>,
 			{<mod_rm.bits>, <mod_rm.mask>},
 			{<post_opcode.bits>, <post_opcode.mask>},
-			<alu_shift>, <cc_shift>, <pair_shift>, <digit_kind>, <pair_kind>,
+			<alu_shift>, <cc_shift>, <digit_kind>,
 		},\n
 	);
 	KTL_Slot_Str8 tbl[] = {
@@ -360,9 +358,7 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 		entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
 		entry("alu_shift",        dec(plan->alu_shift)),
 		entry("cc_shift",         dec(plan->cc_shift)),
-		entry("pair_shift",       dec(plan->pair_shift)),
 		entry("digit_kind",       dec(plan->digit_kind)),
-		entry("pair_kind",        dec(plan->pair_kind)),
 	}; 
 	str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
 }}

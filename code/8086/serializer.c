@@ -425,9 +425,9 @@ x8616_serialize_validate(X8616_DecodedInstruction_R inst)
 	if (bad_decode || invalid_sig || invalid_mnemonic || invalid_prefix_with_seg)  {
 		status = x8616_serialize_invalid_record; goto status_failed;
 	}
-	B4 bad_prefix_segement = inst->prefixes.has_segment && (x8616_serialize_has_memory(inst)    == 0);
+	B4 bad_prefix_segment = inst->prefixes.has_segment && (x8616_serialize_has_memory(inst)    == 0);
 	B4 bad_prefix_repeat   = inst->prefixes.has_repeat  && (x8616_serialize_is_string(inst->op) == 0);
-	if (bad_prefix_segement || bad_prefix_repeat) { 
+	if (bad_prefix_segment || bad_prefix_repeat) { 
 		status = x8616_serialize_unsupported_form; goto status_failed; 
 	}
 

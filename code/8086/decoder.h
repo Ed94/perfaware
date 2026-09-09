@@ -93,7 +93,6 @@ typedef Enum_(U2, X8616_DecodePlanFlags) {
 	Bit_(x8616_plan_is_prefix,      11),
 	Bit_(x8616_plan_has_alu,        12),
 	Bit_(x8616_plan_has_cc,         13),
-	Bit_(x8616_plan_has_pair,       14),
 };
 
 typedef Enum_(U1, X8616_DecodePayload) {
@@ -140,9 +139,7 @@ typedef Struct_(X8616_DecodePlan) {
 
 	U1 alu_shift;
 	U1 cc_shift;
-	U1 pair_shift;
 	X8616_DigitKind digit_kind;
-	X8616_PairKind  pair_kind;
 };
 
 enum {
