@@ -370,7 +370,9 @@ x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen_R gen)
 		str8gen_append_str8(out, slit8(
 			"// Generated from encoder_table.h. Do not hand-edit.\n"
 			"// Plan 0 is a nil/invalid entry.\n"
-			"\n"
+			"#ifdef INTELLISENSE_DIRECTIVES\n"
+			"#\tinclude \"dsl.h\"\n"
+			"#endif\n\n"
 		));
 		gen_fmt(out, code_str8(RO_ global X8616_DecodePlan x8616_decode_plans[<plan_count>] =\n{\n)
 			, entry("plan_count", dec(X8616_ENCODING_COUNT + 1))
@@ -466,8 +468,7 @@ x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen_R gen)
 #undef hex_u1
 #undef dec
 
-int
-main(void) {
+int main(void) {
 	FArena info_scratch = farena_make(slice_ut_arr(smem.info));
 	X8616_DecodeGenInfo gen_info = x8616_decode_table_generate(& smem.gen, & info_scratch);
 	if (gen_info.msgs.error_count) { ms_exit_process(1); return 1; }

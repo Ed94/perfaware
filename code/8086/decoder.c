@@ -24,9 +24,9 @@ RO_ global U1 x8616_decode_payload_bytes[] = {
 };
 
 typedef Struct_(X8616_DecodePlex) {
-	U1 const* source;
-	U4        source_size;
-	U4        source_offset;
+	U1* source;
+	U4  source_size;
+	U4  source_offset;
 
 	U1 body[X8616_DECODE_BODY_CAP + X8616_DECODE_BODY_PAD];
 	U1 body_available;

@@ -142,8 +142,8 @@ enum {
 };
 
 typedef Struct_(X8616_DecodeRequest) {
-	U1 const* source;
-	U4        source_size;
+	U1* source;
+	U4  source_size;
 
 	X8616_DecodedInstruction* instructions;
 	U4                        instruction_capacity;

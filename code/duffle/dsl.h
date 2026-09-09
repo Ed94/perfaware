@@ -222,6 +222,10 @@ def_signed_ops(le, <=)
 #define dbg_args(...) __VA_ARGS__
 
 #pragma region Control Flow & Iteration
+#define jump_ne(a,b,label) if (a != b) goto label
+#define jump_gt(a,b,label) if (a >  b) goto label
+#define jump_lt(a,b,label) if (a <  b) goto label
+
 #define unreachable() __builtin_unreachable()
 
 #define each_iter(type, iter, end)             (type iter = 0; iter < end; ++ iter)

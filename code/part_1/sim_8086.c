@@ -16,9 +16,11 @@
 #include "8086/info.h"
 #include "8086/info_render.h"
 #include "8086/decoder.h"
+#include "8086/serializer.h"
 #include "8086/gen/decoder_table.h"
 
 #include "8086/decoder.c"
+#include "8086/serializer.c"
 
 // #include "8086/decoder.h"
 
@@ -57,7 +59,6 @@ FI_ void a8utf8_from_u1_be(UTF8 out[8], U1 value) {
 
 I_ U4 binary_as_str8_eval_len(Slice_U1 data) { return data.len * 8; }
 
-#define jump_lt(a,b,label) if (a < b) goto label
 
 I_ Str8 binary_as_str8(Slice_U1 data, FArena* str8_mem) { Str8 result = {0};
 	U4 req_len = data.len * 8; jump_lt(str8_mem->capacity,req_len, jret);
@@ -74,7 +75,8 @@ typedef Struct_(SMemory) {
 	U1 Scratchpad [Scratchpad_Len];
 	U1 FileRam    [FileRam_Len];
 
-	U1 decode_mem[kilo(64)];
+	U1   decode_mem[kilo(64)];
+	UTF8 text_mem  [kilo(16)];
 };
 global SMemory smem;
 
@@ -103,8 +105,22 @@ int main()
 		.instruction_capacity = decoded.len,
 		.info_arena           = & decode_arena,
 	);
-	assert(info.instruction_count > 0);
-	// Str8 infO_report = x8616_info_render(slice_ut_arr(smem.Scratchpad), info.msgs.first,);
+	if (info.source_consumed != data.len || info.instruction_count == 0 || info.msgs.error_count || info.msgs.dropped_count) {
+		ms_exit_process(10);
+		return 10;
+	}
+	X8616_SerializeInfo text = x8616_serialize_instructions((X8616_SerializeRequest){
+		.instructions      = decoded.ptr,
+		.instruction_count = info.instruction_count,
+		.output            = slice_ut_arr(smem.text_mem),
+		.scratch           = slice_ut_arr(smem.Scratchpad),
+	});
+	if (text.status != x8616_serialize_ok || text.instructions_written != info.instruction_count) {
+		ms_exit_process(13);
+		return 13;
+	}
+	Str8 listing_text = text.text;
+	(void)listing_text;
 
 	ms_exit_process(0);
 	return 0;
