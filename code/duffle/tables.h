@@ -1,13 +1,13 @@
 #ifdef INTELLISENSE_DIRECTIVES
 #	pragma once
 #	include "dsl.h"
+#	include "asm.h"
 #	include "memory.h"
 #	include "hashing.h"
 #	include "analysis.h"
 #endif
 
 #pragma region Key Table Linear (KTL)
-
 enum { KT_Slot_value = S_(U8), };
 #define KTL_Slot_(type) Struct_(tmpl(KTL_Slot,type)) { \
 	U8   key;   \
@@ -37,4 +37,19 @@ FI_ void ktl_populate_slice_a2_str8(KTL_Str8* kt, Slice_A2_Str8 values) {
 #define ktl_str8_key(str)      hash64_fnv1a_ret(slice_to_ut(slit8(str)), 0)
 #define ktl_str8_from_arr(arr) (KTL_Str8){arr, Array_len(arr)}
 
+FI_ Str8_R ktl_str8_find(KTL_Str8 table, U8 key) {
+	U8 i = 0;
+	while (table.len - i >= 4) {
+		KTL_Slot_Str8_R p = table.ptr + i;
+		U4 mask = find_aos_keys_mask_u8x4(& p[0].key, & p[1].key, & p[2].key, & p[3].key, key);
+		if (mask) return & table.ptr[i + C_(U8, count_trailing_zeros_u4(mask))].value;
+		i += 4;
+	}
+	while (i < table.len) {
+		if (table.ptr[i].key == key) return & table.ptr[i].value;
+		++ i;
+	}
+	assert(false);
+	return nullptr;
+}
 #pragma endregion KTL

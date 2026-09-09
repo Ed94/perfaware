@@ -1,4 +1,5 @@
 #include "duffle/dsl.h"
+#include "duffle/asm.h"
 #include "duffle/analysis.h"
 #include "duffle/math.h"
 #include "duffle/encoding.h"
@@ -274,9 +275,7 @@ x8616_decode_table_generate(X8616_DecodeGen* gen, FArena_R info_scratch) {
 }
 
 
-#ifndef X8616_DECODE_TABLE_OUTPUT
-#	define X8616_DECODE_TABLE_OUTPUT "./code/8086/gen/decoder_table.h"
-#endif
+#define X8616_DECODE_TABLE_OUTPUT "./code/8086/gen/decoder_table.h"
 
 enum {
 	INFO_MEMORY_SIZE = kilo(64),
@@ -318,54 +317,51 @@ I_ Str8 str8_from_u4_opt(U4 num, Opt_str8_from_u4 o) { if (o.radix == 0) {o.radi
 #define code_str8(...) slit8(stringify(__VA_ARGS__))
 
 internal void
-x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan const* plan) {
-	defer_rewind(smem.scratch.top) 
-	{
-		Str8 template = code_str8(
-			\t{ 
-				<flags>, <op>, <encoding_flags>, <width>,
-				{ <operands[0]> , <operands[1]> }, <operand_count>, 
-				<payload>, <prefix_kind>,
-				<d_shift>, <w_shift>, <s_shift>, <v_shift>, <z_shift>, <reg_shift>, <sr_shift>,
-				{ <mod_rm.bits>, <mod_rm.mask> },
-				{ <post_opcode.bits>, <post_opcode.mask> }, 
-			},\n
-		);
-		KTL_Slot_Str8 tbl[] = {
-		#define dec(value)    str8_from_u4(value, .radix = 10, .min_digits = 1)
-		#define hex_u1(value) str8_from_u4(value, .radix = 16, .min_digits = 2)
-		#define hex_u2(value) str8_from_u4(value, .radix = 16, .min_digits = 4)
-		#define entry(key,value) { ktl_str8_key(key), value }
-			entry("flags",            hex_u2(plan->flags)),
-			entry("op",               hex_u1(plan->op)),
-			entry("encoding_flags",   hex_u1(plan->encoding_flags)),
-			entry("width",            hex_u1(plan->width)),
-			entry("operands[0]",      hex_u1(plan->operands[0])),
-			entry("operands[1]",      hex_u1(plan->operands[1])),
-			entry("operand_count",    dec(plan->operand_count)),
-			entry("payload",          dec(plan->payload)),
-			entry("prefix_kind",      dec(plan->prefix_kind)),
-			entry("d_shift",          dec(plan->d_shift)),
-			entry("w_shift",          dec(plan->w_shift)),
-			entry("s_shift",          dec(plan->s_shift)),
-			entry("v_shift",          dec(plan->v_shift)),
-			entry("z_shift",          dec(plan->z_shift)),
-			entry("reg_shift",        dec(plan->reg_shift)),
-			entry("sr_shift",         dec(plan->sr_shift)),
-			entry("mod_rm.bits",      hex_u1(plan->mod_rm.bits)),
-			entry("mod_rm.mask",      hex_u1(plan->mod_rm.mask)),
-			entry("post_opcode.bits", hex_u1(plan->post_opcode.bits)),
-			entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
-		#undef dec
-		#undef hex
-		#undef entry
-		}; 
-		str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
-	}
-}
+x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewind(smem.scratch.top) {
+	Str8 template = code_str8(
+		\t{ 
+			<flags>, <op>, <encoding_flags>, <width>,
+			{<operands[0]>, <operands[1]>}, <operand_count>, 
+			<payload>, <prefix_kind>,
+			<d_shift>, <w_shift>, <s_shift>, <v_shift>, <z_shift>, <reg_shift>, <sr_shift>,
+			{<mod_rm.bits>, <mod_rm.mask>},
+			{<post_opcode.bits>, <post_opcode.mask>}, 
+		},\n
+	);
+	KTL_Slot_Str8 tbl[] = {
+	#define dec(value)    str8_from_u4(value, .radix = 10, .min_digits = 1)
+	#define hex_u1(value) str8_from_u4(value, .radix = 16, .min_digits = 2)
+	#define hex_u2(value) str8_from_u4(value, .radix = 16, .min_digits = 4)
+	#define entry(key,value) { ktl_str8_key(key), value }
+		entry("flags",            hex_u2(plan->flags)),
+		entry("op",               hex_u1(plan->op)),
+		entry("encoding_flags",   hex_u1(plan->encoding_flags)),
+		entry("width",            hex_u1(plan->width)),
+		entry("operands[0]",      hex_u1(plan->operands[0])),
+		entry("operands[1]",      hex_u1(plan->operands[1])),
+		entry("operand_count",    dec(plan->operand_count)),
+		entry("payload",          dec(plan->payload)),
+		entry("prefix_kind",      dec(plan->prefix_kind)),
+		entry("d_shift",          dec(plan->d_shift)),
+		entry("w_shift",          dec(plan->w_shift)),
+		entry("s_shift",          dec(plan->s_shift)),
+		entry("v_shift",          dec(plan->v_shift)),
+		entry("z_shift",          dec(plan->z_shift)),
+		entry("reg_shift",        dec(plan->reg_shift)),
+		entry("sr_shift",         dec(plan->sr_shift)),
+		entry("mod_rm.bits",      hex_u1(plan->mod_rm.bits)),
+		entry("mod_rm.mask",      hex_u1(plan->mod_rm.mask)),
+		entry("post_opcode.bits", hex_u1(plan->post_opcode.bits)),
+		entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
+	#undef dec
+	#undef hex
+	#undef entry
+	}; 
+	str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
+}}
 
 internal Str8
-x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen const* gen) {
+x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen_R gen) {
 	str8gen_append_str8(out, slit8(
 		"// Generated from encoder_table.h. Do not hand-edit.\n"
 		"// Plan 0 is the all-zero nil/invalid plan.\n\n"
@@ -397,17 +393,13 @@ x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen const* gen) {
 	return str8(out->ptr, out->len);
 }
 
-CLANG_OPTIMIZE_DISABLE
 int
 main(void) {
 	FArena info_scratch = farena_make(slice_ut_arr(smem.info));
 	X8616_DecodeGenInfo gen_info = x8616_decode_table_generate(& smem.gen, & info_scratch);
 	if (gen_info.msgs.error_count) { ms_exit_process(1); return 1; }
 
-	Str8Gen output = {
-		.ptr = C_(UTF8*, smem.text),
-		.cap = S_(smem.text),
-	};
+	Str8Gen output = str8gen_make(slice_ut_arr(smem.text));
 	Str8 generated = x8616_decode_gen_emit(& output, & smem.gen);
 
 	FArena file_scratch = farena_make(slice_ut_arr(smem.file));
@@ -418,4 +410,3 @@ main(void) {
 	ms_exit_process(0);
 	return 0;
 }
-CLANG_OPTIMIZE_ENABLE

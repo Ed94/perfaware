@@ -54,16 +54,19 @@ Standard: c23
 #define LP_      static // static data within procedure scope
 #define internal static // internal
 
+
+#define attribute(directive) __attribute__((directive))
+
 #define asm           __asm__
 
-#define align_(value) __attribute__((aligned (value)))             // for easy alignment
-#define C_(type,data) ((type)(data))                               // for enforced precedence
-#define expect_(x, y) __builtin_expect(x, y)                       // so compiler knows the common path
+#define align_(value) attribute(aligned(value))              // for easy alignment
+#define C_(type,data) ((type)(data))                         // for enforced precedence
+#define expect_(x, y) __builtin_expect(x, y)                 // so compiler knows the common path
 #define cexpr_        __builtin_constant_p
 #define I_            internal inline
-#define FI_           inline   __attribute__((always_inline))      // inline always
-#define NI_           internal __attribute__((noinline))           // inline never
-#define RO_           __attribute__((section(".rodata")))          // Read only data allocation
+#define FI_           inline   attribute(always_inline)      // inline always
+#define NI_           internal attribute(noinline)           // inline never
+#define RO_           attribute(section(".rodata"))          // Read only data allocation
 #define T_            typeof                                       // 
 #define T_same(a,b)   _Generic((a), typeof((b)): 1, default: 0)
 
@@ -262,6 +265,10 @@ FI_ U8 atm_swap_u8(U8_R addr, U8 value){asm volatile("lock xchgq %0,%1":"=r"(val
 #pragma endregion Thread Coherence
 
 #pragma region Misc
+#define byte_pos(pos)         (pos * 8)
+#define byte_shift(value,pos) (value << byte_pos(pos))
+#define u4_byte_fill(value)   byte_shift(value,0) | byte_shift(value,1) | byte_shift(value,2) | byte_shift(value,3)
+
 enum {
 	Bitmask_3  = 0x00000007,
 	Bitmask_4  = 0x0000000f,
@@ -270,32 +277,8 @@ enum {
 	Bitmask_10 = 0x000003ff,
 };
 
-typedef Enum_(U4, WeekDay) {
-	WeekDay_Sun,
-	WeekDay_Mon,
-	WeekDay_Tue,
-	WeekDay_Wed,
-	WeekDay_Thu,
-	WeekDay_Fri,
-	WeekDay_Sat,
-	WeekDay_Num,
-};
-
-typedef Enum_(U4, Month) {
-	Month_Jan,
-	Month_Feb,
-	Month_Mar,
-	Month_Apr,
-	Month_May,
-	Month_Jun,
-	Month_Jul,
-	Month_Aug,
-	Month_Sep,
-	Month_Oct,
-	Month_Nov,
-	Month_Dec,
-	Month_Num,
-};
+typedef Enum_(U4,WeekDay){ WeekDay_Sun, WeekDay_Mon, WeekDay_Tue, WeekDay_Wed, WeekDay_Thu, WeekDay_Fri, WeekDay_Sat, WeekDay_Num, };
+typedef Enum_(U4,Month)  { Month_Jan, Month_Feb, Month_Mar, Month_Apr, Month_May, Month_Jun, Month_Jul, Month_Aug, Month_Sep, Month_Oct, Month_Nov, Month_Dec, Month_Num, };
 
 typedef U8 DenseTime;
 

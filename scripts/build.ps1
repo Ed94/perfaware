@@ -145,6 +145,9 @@ $f_sanitize_hwaddress     = '-fsanitize=hwaddress'
 $f_sanitize_address_safe  = '-fsanitize=address,safe-stack'
 $f_sanitize_cfi           = '-fsanitize=cfi'
 
+# --- Compiler Flags: Hardware Architecture ---
+$f_arch_haswell = '-march=haswell'
+
 # --- Compiler Flags: Environment / Target ---
 $f_no_stdlib             = '-nostdlib'
 $f_freestanding          = '-ffreestanding'
@@ -286,6 +289,7 @@ function compile-unit { param(
     $compile_args = @()
     $compile_args += $f_std_c11
 	$compile_args += $f_all_c
+	$compile_args += $f_arch_haswell
 	$compile_args += $f_ms_ex
     $compile_args += $f_wall
     $compile_args += $f_wno_attributes

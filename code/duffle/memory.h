@@ -39,8 +39,17 @@ FI_ B4 mem_match  (U8 a, U8 b, U8 z)   { return mem_compare(a, b, z) == 0; }
 #define mem_match_struct(a,b)  mem_match(C_(U8,a), C_(U8,b), S_((a)[0]))
 #define mem_zero_struct(s) mem_zero(u8_(& s), S_(s))
 
-#pragma region DAG
+I_ void mem_push_aligned_typed(U8 start, U8 capacity, U8_R used, U8 amount, U4 alignment, U4 type_width, U8_R out_ptr, U8_R out_len) {
+	if (amount == 0) { out_ptr[0] = 0; out_len[0] = 0; return;  }
+	U8 desired   = amount * (type_width == 0 ? 1 : type_width);
+	U8 to_commit = align_pow2(desired, alignment ?  alignment : MEM_ALIGNMENT_DEFAULT);
+	U8 ptr       = start + used[0];
+	mem_bump_u8(start, capacity, used, to_commit);
+	out_ptr[0] = ptr;
+	out_len[0] = to_commit;
+}
 
+#pragma region DAG
 #define check_nil(nil, p) ((p) == 0 || (p) == nil)
 #define set_nil(nil, p)   ((p) = nil)
 
@@ -59,11 +68,9 @@ FI_ B4 mem_match  (U8 a, U8 b, U8 z)   { return mem_compare(a, b, z) == 0; }
 	)                         \
 )
 #define sll_queue_push_n(f, l, n, next) sll_queue_push_nz(0, f, l, n, next)
-
 #pragma endregion DAG
 
 #pragma region Slice
-
 typedef unsigned char TSet_(UTF8);
 typedef Struct_(Str8)         { UTF8* ptr; U8 len; }; typedef Str8 Slice_UTF8;
 typedef Struct_(Slice_Str8)   { Str8* ptr; U8 len; };
@@ -104,20 +111,9 @@ typedef Slice_(U1);
 typedef Slice_(U2);
 typedef Slice_(U4);
 typedef Slice_(U8); 
-
 #pragma endregion Slice
 
-I_ Slice mem_push_aligned_typed(U8 start, U8 capacity, U8_R used, U8 amount, U4 alignment, U4 type_width) {
-	if (amount == 0) { return (Slice){}; }
-	U8 desired   = amount * (type_width == 0 ? 1 : type_width);
-	U8 to_commit = align_pow2(desired, alignment ?  alignment : MEM_ALIGNMENT_DEFAULT);
-	U8 ptr       = start + used[0];
-	mem_bump_u8(start, capacity, used, to_commit);
-	return (Slice){ ptr, to_commit };
-}
-
 #pragma region FArena
-
 typedef Opt_(farena)    { U8 alignment, type_width; };
 typedef Struct_(FArena) { U8 start, capacity, used; };
 FI_ void farena_init(FArena_R arena, Slice mem) {  assert(arena != nullptr);
@@ -126,8 +122,10 @@ FI_ void farena_init(FArena_R arena, Slice mem) {  assert(arena != nullptr);
 	arena->used     = 0;
 }
 FI_ FArena farena_make(Slice mem) { FArena a; farena_init(& a, mem); return a; }
-FI_ Slice  farena_push(FArena_R arena, U8 amount, Opt_farena o) {
-	return mem_push_aligned_typed(arena->start, arena->capacity, & arena->used, amount, o.alignment, o.type_width);
+FI_ Slice  farena_push(FArena_R arena, U8 amount, Opt_farena o) { Slice res; 
+	mem_push_aligned_typed(arena->start, arena->capacity, & arena->used, amount, o.alignment, o.type_width
+		, & res.ptr, & res.len);
+	return res;
 }
 FI_ void farena_reset (FArena_R arena) { arena->used = 0; }
 FI_ void farena_rewind(FArena_R arena, U8 save_point) {
@@ -138,14 +136,15 @@ FI_ U8 farena_save(FArena arena) { return arena.used; }
 #define farena_push_(arena, amount, ...)                                         farena_push((arena),(amount),opt_(farena,__VA_ARGS__))
 #define farena_push_type(arena, type, ...)                              C_(type*,farena_push((arena),1,       opt_(farena,.type_width=S_(type),__VA_ARGS__)).ptr)
 #define farena_push_array(arena, type, amount, ...) (tmpl(Slice,type)){ C_(type*,farena_push((arena),(amount),opt_(farena,.type_width=S_(type),__VA_ARGS__)).ptr),(amount) }
-
 #pragma endregion FArena
 
 #pragma region FStack
 #define FStack_(name, type, width) Struct_(name) { U8 top; type arr[width]; }
 
-FI_ Slice fstack_push(Slice mem, U8_R top, U8 amount, Opt_farena o) { 
-	return mem_push_aligned_typed(mem.ptr, mem.len, top, amount, o.alignment, o.type_width);
+FI_ Slice fstack_push(Slice mem, U8_R top, U8 amount, Opt_farena o) { Slice res; 
+	mem_push_aligned_typed(mem.ptr, mem.len, top, amount, o.alignment, o.type_width
+		, & res.ptr, & res.len);
+	return res;
 };
 
 // This is here more for annotation than anything else.

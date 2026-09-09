@@ -6,6 +6,7 @@
 #	include "hashing.h"
 #	include "tables.h"
 #	include "analysis.h"
+#	include "asm.h"
 #endif
 
 // NOTE(rjf): Includes reverses for uppercase and lowercase hex.
@@ -123,8 +124,7 @@ I_ Str8 str8_from_u4_buf(Slice buf, U4 num, U4 radix, U4 min_digits, U4 digit_gr
 	return result;
 }
 
-I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template)
-{
+I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template){
 	slice_assert(buffer);
 	slice_assert(table);
 	slice_assert(fmt_template);
@@ -132,68 +132,41 @@ I_ Str8 str8_fmt_ktl_buf(Slice buffer, KTL_Str8 table, Str8 fmt_template)
 	U8     buffer_remaining = buffer.len;
 	UTF8_R cursor_fmt       = fmt_template.ptr;
 	U8     left_fmt         = fmt_template.len;
+	U1x16  needle_lt        = splat_u4_u1x16(u4_byte_fill('<'));
+	U1x16  needle_gt        = splat_u4_u1x16(u4_byte_fill('>'));
 	while (left_fmt && buffer_remaining)
 	{
 		// Forward until we hit the delimiter '<' or the template's contents are exhausted.
 		U8 copy_offset = 0;
-		if (cursor_fmt[0] == '<')
-		{
-			UTF8_R potential_token_cursor = cursor_fmt + 1; // Skip '<'
-			U8     potential_token_len    = 0;
-			B4     fmt_overflow           = false;
-			while(true) {
-				UTF8_R cursor       = potential_token_cursor + potential_token_len;
-				fmt_overflow        = cursor >= slice_end(fmt_template);
-				B4 found_terminator = potential_token_cursor[potential_token_len] == '>';
-				if (fmt_overflow || found_terminator) { break; }
-				++ potential_token_len;
-			}
-			if (fmt_overflow) { 
-				// Failed to find a subst and we're at end of fmt, just copy segment.
-				copy_offset = 1 + potential_token_len; // '<' + token
-				goto write_to_buffer; 
-			}
-			// Hashing the potential token and cross checking it with our token table
-			U8 key = hash64_fnv1a_ret(slice_ut(u8_(potential_token_cursor), potential_token_len), 0);
-			Str8_R value = nullptr; for slice_iter(table, token) {
-				// We do a linear iteration instead of a hash table lookup because the user should never subst with more than 32-128 unqiue tokens..
-				if (token->key == key) { value = & token->value; break; }
-			}
-			if (value)
-			{
-				// We're going to appending the string, make sure we have enough space in our buffer.
-				// NOTE(Ed): this version doesn't support growing the buffer (No Allocator Interface)
-				copy_offset = min(buffer_remaining, value->len); // Prevent Buffer overflow.
-				assert((buffer_remaining - copy_offset) > 0);
-				mem_copy(u8_(cursor_buffer), u8_(value->ptr), copy_offset);
-				// Sync cursor format to after the processed token
-				cursor_buffer    += copy_offset;
-				buffer_remaining -= copy_offset;
-				cursor_fmt        = potential_token_cursor + 1 + potential_token_len; // '<' + token
-				left_fmt         -= potential_token_len    + 2; // The 2 here are the '<' & '>' delimiters being omitted.
-				continue;
-			}
-			// If not a subsitution, we copy the segment and continue.
-			copy_offset = 1 + potential_token_len; // '<' + token
-			goto write_to_buffer;
+		if (cursor_fmt[0] == '<') {
+			UTF8_R sig     = cursor_fmt + 1;
+			U8     sig_max = slice_end(fmt_template) - sig;
+			U8     sig_len = find_u1_via_u1x16(sig, sig_max, '>', needle_gt);
+			assert(sig_len < sig_max);
+
+			Str8_R value = ktl_str8_find(table, hash64_fnv1a_ret(slice_ut(sig, sig_len), 0));
+			U8     n     = min(buffer_remaining, value->len); 
+			assert((buffer_remaining - n) > 0); mem_copy(u8_(cursor_buffer), u8_(value->ptr), n);
+			cursor_buffer    += n;
+			buffer_remaining -= n;
+			cursor_fmt        = sig + sig_len + 1;
+			left_fmt         -= sig_len + 2;
+			continue;
 		}
-		else do {
-			++ copy_offset;
-		} 
-		while ( (cursor_fmt[copy_offset] != '<' && (cursor_fmt + copy_offset) < slice_end(fmt_template)) );
-	write_to_buffer:
-		assert((buffer_remaining - copy_offset) > 0);
-		copy_offset = min(buffer_remaining, copy_offset); // Prevent buffer overflow.
-		mem_copy(u8_(cursor_buffer), u8_(cursor_fmt), copy_offset);
-		buffer_remaining -= copy_offset;
-		left_fmt         -= copy_offset;
-		cursor_buffer    += copy_offset;
-		cursor_fmt       += copy_offset;
+		U8 n = find_u1_via_u1x16(cursor_fmt, min(left_fmt, buffer_remaining), '<', needle_lt);
+		assert((buffer_remaining - 1) > 0);  n = min(buffer_remaining, n);
+		mem_copy(u8_(cursor_buffer), u8_(cursor_fmt), n);
+		cursor_buffer    += n;
+		cursor_fmt       += n;
+		buffer_remaining -= n;
+		left_fmt         -= n;
 	}
-	return (Str8){C_(UTF8*, buffer.ptr), buffer.len - buffer_remaining};
+	return str8(C_(UTF8*,buffer.ptr), buffer.len - buffer_remaining);
 }
 
 typedef Struct_(Str8Gen) { UTF8* ptr; U8 cap, len; };
+FI_ Str8Gen str8gen_make(Slice s) { return (Str8Gen){C_(UTF8*,s.ptr), s.len, 0}; }
+
 FI_ Slice str8gen_buf(Str8Gen_R gen) { return (Slice){u8_(gen->ptr) + gen->len, gen->cap - gen->len}; }
 
 FI_ void str8gen_append_str8(Str8Gen_R gen, Str8 str) { assert(gen != nullptr);
@@ -224,8 +197,7 @@ str16_from_8(FArena* arena, Str8 in) {
     U1* opl = ptr + in.len;
     U8 size = 0;
     UnicodeDecode consume;
-    for(;ptr < opl; ptr += consume.inc)
-    {
+    for(;ptr < opl; ptr += consume.inc) {
       consume = utf8_decode(ptr, opl - ptr);
       size   += utf16_encode(str.ptr + size, consume.codepoint);
     }
