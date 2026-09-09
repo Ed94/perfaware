@@ -31,6 +31,11 @@ typedef Enum_(U1, X8616_InfoCode) {
 	x8616_info_serialize_unsupported_form = 0x0D,
 	x8616_info_serialize_output_full      = 0x0E,
 
+	x8616_info_parse_bad_request          = 0x0F,
+	x8616_info_parse_syntax               = 0x10,
+	x8616_info_parse_unknown_mnemonic     = 0x11,
+	x8616_info_parse_output_full          = 0x12,
+
 	x8616_info_count,
 };
 
@@ -65,6 +70,10 @@ RO_ global Str8 x8616_info_templates[x8616_info_count] = {
 	[x8616_info_serialize_invalid_record]   = slit8("Serialize record <offset> is not printable (op <actual>)."),
 	[x8616_info_serialize_unsupported_form] = slit8("Serialize record <offset> has an unsupported display form (op <actual>)."),
 	[x8616_info_serialize_output_full]      = slit8("Serialize output is full at record <offset>: capacity <expected>, produced <actual>."),
+	[x8616_info_parse_bad_request]          = slit8("Parse request is missing source, output, or info arena."),
+	[x8616_info_parse_syntax]               = slit8("Parse syntax error at <offset>."),
+	[x8616_info_parse_unknown_mnemonic]     = slit8("Unknown mnemonic at <offset>."),
+	[x8616_info_parse_output_full]          = slit8("Parse output is full: capacity <expected>, produced <actual>."),
 };
 
 typedef Struct_(X8616_InfoList) {

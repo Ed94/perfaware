@@ -17,6 +17,7 @@
 #include "8086/info_render.h"
 #include "8086/decoder.h"
 #include "8086/serializer.h"
+#include "8086/serializer_tables.h"
 #include "8086/gen/decoder_table.h"
 
 #include "8086/decoder.c"

@@ -21,6 +21,7 @@ RO_ U8 integer_symbol_reverse[128] = {
   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
 };
 
+FI_ B4   char_is_space(UTF8 c) { return(c == ' ' || c == '\n' || c == '\t' || c == '\r' || c == '\f' || c == '\v'); }
 FI_ B4   char_is_upper(UTF8 c) { return('A' <= c && c <= 'Z'); }
 FI_ UTF8 char_to_lower(UTF8 c) { if (char_is_upper(c)) { c += ('a' - 'A'); } return(c); }
 FI_ B4   char_is_digit(UTF8 c, U4 base) {
