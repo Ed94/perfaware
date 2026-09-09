@@ -70,7 +70,7 @@ typedef Struct_(X8616_InfoList) {
 I_ Str8 x8616_info_template(X8616_InfoCode code) { return code < x8616_info_count ? x8616_info_templates[code] : x8616_info_templates[x8616_info_none]; }
 
 FI_ void x8616_info_push(FArena_R scratch
-	, X8616_InfoList_R list
+	, X8616_InfoList_R msgs
 	, X8616_InfoKind   kind
 	, X8616_InfoCode   code
 	, U4               source_offset
@@ -79,13 +79,13 @@ FI_ void x8616_info_push(FArena_R scratch
 	, U4               actual
 ){
 	assert(scratch != nullptr);
-	list->count         += 1;
-	list->error_count   += kind == x8616_info_error;
-	list->warning_count += kind == x8616_info_warning;
+	msgs->count         += 1;
+	msgs->error_count   += kind == x8616_info_error;
+	msgs->warning_count += kind == x8616_info_warning;
 
 	U4 allocation_size = align_pow2(S_(X8616_InfoMsg), MEM_ALIGNMENT_DEFAULT);
 	U4 left            = scratch->capacity - scratch->used;
-	if (allocation_size > left) { ++ list->dropped_count; return; }
+	if (allocation_size > left) { ++ msgs->dropped_count; return; }
 
 	X8616_InfoMsg_R msg = farena_push_type(scratch, X8616_InfoMsg);
 	// msg[0] = (X8616_InfoMsg){0};
@@ -96,5 +96,5 @@ FI_ void x8616_info_push(FArena_R scratch
 	msg->expected      = expected;
 	msg->actual        = actual;
 	msg->text          = x8616_info_template(code);
-	sll_queue_push_n(list->first, list->last, msg, next);
+	sll_queue_push_n(msgs->first, msgs->last, msg, next);
 }

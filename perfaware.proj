@@ -4,6 +4,11 @@ target:
 {
   executable: "build/sim_8086.exe"
   working_directory: ""
-  enabled: 1
   label: "Sim 8086"
+}
+target:
+{
+  executable: "build/decoder_table_generator.meta.exe"
+  working_directory: "../perfaware"
+  enabled: 1
 }

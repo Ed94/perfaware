@@ -37,7 +37,7 @@ typedef U1 U1x16 attribute(vector_size(16));
 #define x64_u8x4_match(dst, a, b)              "vpcmpeqq "             x64_r(b)   ", " x64_r(a)   ", " x64_r(dst) "\n"
 #define x64_u4_from_qword_hits(dst, src)       "vmovmskpd "            x64_r(src) ", " x64_r(dst) "\n"
 
-I_ U4 count_trailing_zeros_u4(U4 mask) {
+FI_ U4 count_trailing_zeros_u4(U4 mask) {
 	U4 n;
 	asm volatile(
 		x64_u4_count_trailing_zeros(n, mask)
@@ -47,7 +47,7 @@ I_ U4 count_trailing_zeros_u4(U4 mask) {
 	return n;
 }
 
-I_ U1x16 splat_u4_u1x16(U4 b4) {
+FI_ U1x16 splat_u4_u1x16(U4 b4) {
 	U1x16 v;
 	asm volatile(
 		x64_u1x16_load_mem4    (v, b4)
@@ -58,7 +58,7 @@ I_ U1x16 splat_u4_u1x16(U4 b4) {
 	return v;
 }
 
-I_ U4 mask_eq8_u1x16(U1_R p, U1x16 needle) {
+FI_ U4 mask_eq8_u1x16(U1_R p, U1x16 needle) {
 	U1x16 chunk;
 	U4    mask;
 	asm volatile(
@@ -72,7 +72,7 @@ I_ U4 mask_eq8_u1x16(U1_R p, U1x16 needle) {
 	return mask; /* movq zero-fills the high 8 bytes; bits 8–15 stay 0 */
 }
 
-I_ U4 mask_eq16_u1x16(U1_R p, U1x16 needle) {
+FI_ U4 mask_eq16_u1x16(U1_R p, U1x16 needle) {
 	U1x16 chunk;
 	U4    mask;
 	asm volatile(
@@ -105,7 +105,7 @@ I_ U8 find_u1_via_u1x16(U1_R p, U8 len, U1 ch, U1x16 needle) {
 	return len; /* not found */
 }
 
-I_ U4 find_aos_keys_mask_u8x4(U8_R p0, U8_R p1, U8_R p2, U8_R p3, U8 key) {
+FI_ U4 find_aos_keys_mask_u8x4(U8_R p0, U8_R p1, U8_R p2, U8_R p3, U8 key) {
 	U8x2 lo, hi;
 	U8x4 keys, splat, eq;
 	U4   mask;

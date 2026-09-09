@@ -1,5 +1,5 @@
 // Generated from encoder_table.h. Do not hand-edit.
-// Plan 0 is the all-zero nil/invalid plan.
+// Plan 0 is a nil/invalid entry.
 
 RO_ global X8616_DecodePlan x8616_decode_plans[132] =
 {
@@ -354,6 +354,6 @@ RO_ global U1 x8616_decode_aux[3072] =
 };
 
 enum {
-	X8616_DECODE_PLAN_COUNT = 132,
-	X8616_DECODE_AUX_COUNT  = 3072,
+ 	X8616_DECODE_PLAN_COUNT = 132,
+ 	X8616_DECODE_AUX_COUNT = 3072, 
 };

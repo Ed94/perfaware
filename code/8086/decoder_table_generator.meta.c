@@ -48,18 +48,16 @@ FI_ B4 x8616_decode_gen_operand_uses_modrm(X8616_Operand operand) {
 FI_ B4 x8616_decode_gen_operand_uses_rm(X8616_Operand operand) { return operand == x8616_operand_rm; }
 
 internal X8616_DecodePayload
-x8616_decode_gen_payload_from_operand(X8616_Operand operand) {
-	switch (operand) {
-		case x8616_operand_imm:        return x8616_payload_imm;
-		case x8616_operand_imm8:       return x8616_payload_imm8;
-		case x8616_operand_imm16:      return x8616_payload_imm16;
-		case x8616_operand_mem_direct: return x8616_payload_mem_direct;
-		case x8616_operand_rel8:       return x8616_payload_rel8;
-		case x8616_operand_rel16:      return x8616_payload_rel16;
-		case x8616_operand_far_ptr:    return x8616_payload_far_ptr;
-		default:                       return x8616_payload_none;
-	}
-}
+x8616_decode_gen_payload_from_operand(X8616_Operand operand) { switch (operand) {
+	case x8616_operand_imm:        return x8616_payload_imm;
+	case x8616_operand_imm8:       return x8616_payload_imm8;
+	case x8616_operand_imm16:      return x8616_payload_imm16;
+	case x8616_operand_mem_direct: return x8616_payload_mem_direct;
+	case x8616_operand_rel8:       return x8616_payload_rel8;
+	case x8616_operand_rel16:      return x8616_payload_rel16;
+	case x8616_operand_far_ptr:    return x8616_payload_far_ptr;
+	default:                       return x8616_payload_none;
+}}
 
 internal X8616_DecodePrefixKind
 x8616_decode_gen_prefix_kind(X8616_Encoding const* encoding) {
@@ -73,7 +71,7 @@ x8616_decode_gen_prefix_kind(X8616_Encoding const* encoding) {
 }
 
 internal X8616_DecodePlan
-x8616_decode_gen_plan(X8616_Encoding const* encoding, U4 encoding_idx, X8616_InfoList* msgs, FArena_R info_scratch)
+x8616_decode_gen_plan(X8616_Encoding_R encoding, U4 encoding_idx, X8616_InfoList_R msgs, FArena_R info_scratch)
 {
 	X8616_DecodePlan plan = {0};
 	plan.op             = encoding->op;
@@ -142,11 +140,11 @@ x8616_decode_gen_plan(X8616_Encoding const* encoding, U4 encoding_idx, X8616_Inf
 	return plan;
 }
 
-FI_ B4 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding const* encoding, U1 opcode) {
+FI_ B4 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding_R encoding, U1 opcode) {
 	return (opcode & encoding->opcode.mask) == encoding->opcode.bits;
 }
 
-FI_ B4 x8616_decode_gen_plan_matches_second(X8616_DecodePlan const* plan, U1 byte) {
+FI_ B4 x8616_decode_gen_plan_matches_second(X8616_DecodePlan_R plan, U1 byte) {
 	if (plan->mod_rm.mask      && ((byte & plan->mod_rm.mask)      != plan->mod_rm.bits))      return false;
 	if (plan->post_opcode.mask && ((byte & plan->post_opcode.mask) != plan->post_opcode.bits)) return false;
 	return true;
@@ -213,7 +211,7 @@ x8616_decode_gen_pass_dispatch(X8616_DecodeGen* gen, FArena_R info_scratch)
 }
 
 internal void
-x8616_decode_gen_pass_validate(X8616_DecodeGen* gen, FArena_R info_scratch)
+x8616_decode_gen_pass_validate(X8616_DecodeGen_R gen, FArena_R info_scratch)
 {
 	for (U4 opcode = 0; opcode < 256; ++ opcode)
 	for (U4 second = 0; second < 256; ++ second)
@@ -221,10 +219,10 @@ x8616_decode_gen_pass_validate(X8616_DecodeGen* gen, FArena_R info_scratch)
 		U1 expected = 0; 
 		for (U4 encoding_idx = 0; encoding_idx < X8616_ENCODING_COUNT; ++ encoding_idx)
 		{
-			X8616_Encoding const* encoding = x8616_encodings + encoding_idx;
+			X8616_Encoding_R encoding = x8616_encodings + encoding_idx;
 			if (x8616_decode_gen_encoding_matches_opcode(encoding, C_(U1, opcode)) == false) continue;
 
-			X8616_DecodePlan const* plan = gen->plans + encoding_idx + 1;
+			X8616_DecodePlan_R plan = gen->plans + encoding_idx + 1;
 			if (x8616_decode_gen_plan_matches_second(plan, C_(U1, second)) == false) continue;
 
 			if (expected) x8616_info_push(info_scratch, & gen->msgs, x8616_info_error
@@ -295,15 +293,15 @@ typedef Struct_(SMemory) {
 };
 global SMemory smem;
 
-I_ void x8616_decode_gen_append_u4(Str8Gen_R out, U4 value, U4 radix, U4 min_digits) {
+I_ void str8gen_append_u4(Str8Gen_R out, U4 value, U4 radix, U4 min_digits) {
 	UTF8 buffer[64]; Info_str8_from_u4 info = str8_from_u4_info(value, radix, min_digits, 0);
 	Str8 text = str8_from_u4_buf(slice_ut_arr(buffer), value, radix, min_digits, 0, info);
 	str8gen_append_str8(out, text);
 }
 
-I_ void x8616_decode_gen_append_hex_u1(Str8Gen_R out, U1 value) { x8616_decode_gen_append_u4(out, value, 16, 2); }
-I_ void x8616_decode_gen_append_hex_u2(Str8Gen_R out, U2 value) { x8616_decode_gen_append_u4(out, value, 16, 4); }
-I_ void x8616_decode_gen_append_dec   (Str8Gen_R out, U4 value) { x8616_decode_gen_append_u4(out, value, 10, 1); }
+I_ void str8gen_append_hex_u1(Str8Gen_R out, U1 value) { str8gen_append_u4(out, value, 16, 2); }
+I_ void str8gen_append_hex_u2(Str8Gen_R out, U2 value) { str8gen_append_u4(out, value, 16, 4); }
+I_ void str8gen_append_dec   (Str8Gen_R out, U4 value) { str8gen_append_u4(out, value, 10, 1); }
 
 FI_ Slice scratch_push(U8 len) { return fstack_push_(smem.scratch, len); }
 
@@ -315,6 +313,11 @@ I_ Str8 str8_from_u4_opt(U4 num, Opt_str8_from_u4 o) { if (o.radix == 0) {o.radi
 #define str8_from_u4(num, ...) str8_from_u4_opt(num, opt_(str8_from_u4, __VA_ARGS__))
 
 #define code_str8(...) slit8(stringify(__VA_ARGS__))
+
+#define dec(v)        str8_from_u4(v, .radix = 10, .min_digits = 1)
+#define hex_u1(v)     str8_from_u4(v, .radix = 16, .min_digits = 2)
+#define hex_u2(v)     str8_from_u4(v, .radix = 16, .min_digits = 4)
+#define entry(k,v)    { ktl_str8_key(k), v }
 
 internal void
 x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewind(smem.scratch.top) {
@@ -329,10 +332,6 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 		},\n
 	);
 	KTL_Slot_Str8 tbl[] = {
-	#define dec(value)    str8_from_u4(value, .radix = 10, .min_digits = 1)
-	#define hex_u1(value) str8_from_u4(value, .radix = 16, .min_digits = 2)
-	#define hex_u2(value) str8_from_u4(value, .radix = 16, .min_digits = 4)
-	#define entry(key,value) { ktl_str8_key(key), value }
 		entry("flags",            hex_u2(plan->flags)),
 		entry("op",               hex_u1(plan->op)),
 		entry("encoding_flags",   hex_u1(plan->encoding_flags)),
@@ -353,45 +352,119 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 		entry("mod_rm.mask",      hex_u1(plan->mod_rm.mask)),
 		entry("post_opcode.bits", hex_u1(plan->post_opcode.bits)),
 		entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
-	#undef dec
-	#undef hex
-	#undef entry
 	}; 
 	str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
 }}
 
+#define gen_fmt(out, tmpl, ...) str8gen_append_fmt((out), (tmpl), ktl_str8_from_arr(((KTL_Slot_Str8[]){ __VA_ARGS__ })))
+
 internal Str8
-x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen_R gen) {
-	str8gen_append_str8(out, slit8(
-		"// Generated from encoder_table.h. Do not hand-edit.\n"
-		"// Plan 0 is the all-zero nil/invalid plan.\n\n"
-		"RO_ global X8616_DecodePlan x8616_decode_plans["));
-	x8616_decode_gen_append_dec(out, X8616_ENCODING_COUNT + 1);
-	str8gen_append_str8(out, slit8("] =\n{\n"));
-	for (U4 idx = 0; idx < X8616_ENCODING_COUNT + 1; ++ idx) x8616_decode_gen_emit_plan(out, gen->plans + idx);
+x8616_decode_gen_emit(Str8Gen_R out, X8616_DecodeGen_R gen)
+{
+#pragma push_macro("RO_")
+#pragma push_macro("global")
+#undef RO_
+#undef global
+	defer_rewind(smem.scratch.top)
+	{
+		str8gen_append_str8(out, slit8(
+			"// Generated from encoder_table.h. Do not hand-edit.\n"
+			"// Plan 0 is a nil/invalid entry.\n"
+			"\n"
+		));
+		gen_fmt(out, code_str8(RO_ global X8616_DecodePlan x8616_decode_plans[<plan_count>] =\n{\n)
+			, entry("plan_count", dec(X8616_ENCODING_COUNT + 1))
+		);
 
-	str8gen_append_str8(out, slit8("};\n\nRO_ global U2 x8616_decode_dispatch[256] =\n{\n"));
-	for (U4 idx = 0; idx < 256; ++ idx) {
-		if ((idx & 15) == 0) str8gen_append_str8(out, slit8("\t"));
-		x8616_decode_gen_append_hex_u2(out, gen->dispatch[idx]);
-		str8gen_append_str8(out, (idx & 15) == 15 ? slit8(",\n") : slit8(", "));
-	}
+		for (U4 idx = 0; idx < X8616_ENCODING_COUNT + 1; ++ idx) { x8616_decode_gen_emit_plan(out, gen->plans + idx); }
 
-	str8gen_append_str8(out, slit8("};\n\nRO_ global U1 x8616_decode_aux["));
-	x8616_decode_gen_append_dec(out, gen->aux_count);
-	str8gen_append_str8(out, slit8("] =\n{\n"));
-	for (U4 idx = 0; idx < gen->aux_count; ++ idx) {
-		if ((idx & 15) == 0) str8gen_append_str8(out, slit8("\t"));
-		x8616_decode_gen_append_hex_u1(out, gen->aux[idx]);
-		str8gen_append_str8(out, (idx & 15) == 15 ? slit8(",\n") : slit8(", "));
+		str8gen_append_str8(out, code_str8(
+			};\n\n
+		));
+
+		str8gen_append_str8(out, code_str8(RO_ global U2 x8616_decode_dispatch[256] =\n{\n));
+		{
+			Str8 line = code_str8(\t<e0>, <e1>, <e2>, <e3>, <e4>, <e5>, <e6>, <e7>, <e8>, <e9>, <e10>, <e11>, <e12>, <e13>, <e14>, <e15>,\n);
+			for (U4 idx = 0; idx < 256; idx += 16) defer_rewind(smem.scratch.top) {
+				U2_R d = gen->dispatch + idx;
+				gen_fmt(out, line,
+					entry("e0",  hex_u2(d[0])),
+					entry("e1",  hex_u2(d[1])),
+					entry("e2",  hex_u2(d[2])),
+					entry("e3",  hex_u2(d[3])),
+					entry("e4",  hex_u2(d[4])),
+					entry("e5",  hex_u2(d[5])),
+					entry("e6",  hex_u2(d[6])),
+					entry("e7",  hex_u2(d[7])),
+					entry("e8",  hex_u2(d[8])),
+					entry("e9",  hex_u2(d[9])),
+					entry("e10", hex_u2(d[10])),
+					entry("e11", hex_u2(d[11])),
+					entry("e12", hex_u2(d[12])),
+					entry("e13", hex_u2(d[13])),
+					entry("e14", hex_u2(d[14])),
+					entry("e15", hex_u2(d[15]))
+				);
+			}
+		}
+		str8gen_append_str8(out, code_str8(};\n\n));
+
+		gen_fmt(out, code_str8(RO_ global U1 x8616_decode_aux[<aux_count>] =\n{\n)
+			, entry("aux_count", dec(gen->aux_count))
+		);
+		{
+			Str8 line = code_str8(\t<a0>, <a1>, <a2>, <a3>, <a4>, <a5>, <a6>, <a7>, <a8>, <a9>, <a10>, <a11>, <a12>, <a13>, <a14>, <a15>,\n);
+			U4 idx = 0;
+			for (; idx + 16 <= gen->aux_count; idx += 16) defer_rewind(smem.scratch.top) {
+				U1_R a = gen->aux + idx;
+				gen_fmt(out, line,
+					entry("a0",  hex_u1(a[0])),
+					entry("a1",  hex_u1(a[1])),
+					entry("a2",  hex_u1(a[2])),
+					entry("a3",  hex_u1(a[3])),
+					entry("a4",  hex_u1(a[4])),
+					entry("a5",  hex_u1(a[5])),
+					entry("a6",  hex_u1(a[6])),
+					entry("a7",  hex_u1(a[7])),
+					entry("a8",  hex_u1(a[8])),
+					entry("a9",  hex_u1(a[9])),
+					entry("a10", hex_u1(a[10])),
+					entry("a11", hex_u1(a[11])),
+					entry("a12", hex_u1(a[12])),
+					entry("a13", hex_u1(a[13])),
+					entry("a14", hex_u1(a[14])),
+					entry("a15", hex_u1(a[15]))
+				);
+			}
+			if (idx < gen->aux_count) {
+				str8gen_append_str8(out, slit8("\t"));
+				for (; idx < gen->aux_count; ++ idx) {
+					str8gen_append_hex_u1(out, gen->aux[idx]); str8gen_append_str8(out, slit8(", "));
+				}
+				str8gen_append_str8(out, slit8("\n"));
+			}
+		}
+		str8gen_append_str8(out, code_str8(};\n\n));
+
+		gen_fmt(out, code_str8(enum {\n
+			\tX8616_DECODE_PLAN_COUNT = <plan_count>,\n
+			\tX8616_DECODE_AUX_COUNT  = <aux_count>,
+			\n};\n
+		),
+			entry("plan_count", dec(X8616_ENCODING_COUNT + 1)),
+			entry("aux_count",  dec(gen->aux_count))
+		);
 	}
-	str8gen_append_str8(out, slit8("};\n\nenum {\n\tX8616_DECODE_PLAN_COUNT = "));
-	x8616_decode_gen_append_dec(out, X8616_ENCODING_COUNT + 1);
-	str8gen_append_str8(out, slit8(",\n\tX8616_DECODE_AUX_COUNT  = "));
-	x8616_decode_gen_append_dec(out, gen->aux_count);
-	str8gen_append_str8(out, slit8(",\n};\n"));
 	return str8(out->ptr, out->len);
+#pragma pop_macro("RO_")
+#pragma pop_macro("global")
 }
+
+#undef gen_fmt
+#undef entry
+#undef hex_u2
+#undef hex_u1
+#undef dec
 
 int
 main(void) {
