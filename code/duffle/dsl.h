@@ -55,7 +55,6 @@ Standard: c23
 #define LP_      static // static data within procedure scope
 #define internal static // internal
 
-
 #define attribute(directive) __attribute__((directive))
 
 #define asm           __asm__
@@ -73,39 +72,6 @@ Standard: c23
 
 #define R_ restrict 
 #define V_ volatile 
-
-// R_ (restrict) establishes an "Eigen" or "Proprius" mapping.
-// Unlike volatile (V_), which assumes the memory can be changed by anything,
-// R_ tells the compiler that this pointer holds the *sole*, private (idios) ownership of the memory slice. 
-// Writes to this memory are exclusively bound to this single symbolic mapping for the duration of the scope, guaranteeing  zero aliasing.
-
-#pragma region Fictional //, used for intiution
-
-#define EUB_  restrict // Execute Unit Bound:    Data is siloed in the ALU Register File. The Load/Store Unit is bypassed. (Route to Execution Unit.  Keep in registers)
-#define ISO_  restrict // Isolated Provenance:   Alternative to Exu_. Guarantees electrical memory isolation, 
-											 //                        unlocking the compiler’s ability to safely pack data across multiple parallel SIMD lanes (vectorization).
-#define LSU_  volatile // Load/Store Unit Bound: The compiler is forbidden from caching in registers. Forces physical L1 Cache matrix sampling.
-#define LIVE_ volatile // Live External Data:    Alternative to Lsu_ emphasizing the memory is tapped by an external electrical actor.
-
-#define latch_store  /* ~: atomic_store*/         // Blasts voltages from the Store Buffer into the L1 SRAM, physically flipping the cross-coupled inverters to lock the state.
-#define pulse_rfo    /* ~: atomic_xchg*/          // Broadcasts an electrical RFO (Request For Ownership) pulse across the CPU mesh network to invalidate other L1 caches.
-#define tact_acquire /* ~: memory_order_acquire*/ // Clamp. Sends a voltage signal to the instruction decoder to halt the Out-of-Order engine until the load resolves.
-#define tact_release /* ~: memory_order_release*/ // Drain. Forces the Store Buffer flip-flops to completely empty into the L1 cache before proceeding.
-
-// -----------------------------------------------------------------------------
-// Out-of-Order (OoO) Pipeline Modifiers
-// -----------------------------------------------------------------------------
-#define ooo_drift_  __ATOMIC_RELAXED // OoO engine allowed to drift
-#define ooo_anchor_ __ATOMIC_ACQUIRE // Anchor the Load Queue (halt spec lookahead)
-#define ooo_drain_  __ATOMIC_RELEASE // Drain the Store Buffer (force writeback)
-#define ooo_weld_   __ATOMIC_SEQ_CST // Weld pipeline (total order bus lock)
-
-// Latch operations with physical queue modifiers
-#define latch_load_anchor(ptr)       //__atomic_load_n(ptr, ooo_anchor_)
-#define latch_store_drain(ptr, val)  //__atomic_store_n(ptr, val, ooo_drain_)
-#define pulse_xchg_weld(ptr, val)    //__atomic_exchange_n(ptr, val, ooo_weld_)
-
-#pragma endregion Fictional
 
 #define r_(ptr)        C_(T_(ptr[0])*R_, ptr) // Constrain pointer to restrict
 #define v_(ptr)        C_(T_(ptr[0])V_*, ptr) // 

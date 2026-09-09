@@ -5,10 +5,6 @@
 #	include "info.h"
 #endif
 
-/* Numeric representation remains a presentation decision.
-   Feed whatever Duffle-formatted Str8 values you want here (hex for opcode
-   facts, decimal for capacities, etc.) and the existing <key> formatter does
-   the composition. */
 typedef Struct_(X8616_InfoTextValues) { Str8 offset; Str8 expected; Str8 actual; };
 
 FI_ Str8

@@ -67,11 +67,10 @@ typedef Struct_(X8616_DecodedInstruction) {
 	X8616_DecodeFlags     decode_flags;
 	X8616_WidthMode       width;
 	X8616_DecodedPrefixes prefixes;
-	X8616_DecodedOperand  operands[2];
-	U1 operand_count;
-	X8616_OpcodePrefix opcode;
-	X8616_Direction    d;
-	X8616_Width        w;
+	X8616_DecodedOperand  operands[2]; U1 operand_count;
+	X8616_OpcodePrefix    opcode;
+	X8616_Direction       d;
+	X8616_Width           w;
 	B1 has_mod_rm;
 	U1 size;
 	U1 size_required;
@@ -142,20 +141,18 @@ enum {
 };
 
 typedef Struct_(X8616_DecodeRequest) {
-	U1* source;
-	U4  source_size;
-
-	X8616_DecodedInstruction* instructions;
-	U4                        instruction_capacity;
-
+	U1*                       source;           
+	X8616_DecodedInstruction* out_instructions; 
+	U4 source_len;
+	U4 instruction_cap;
 	FArena* info_arena;
 };
 
 typedef Struct_(X8616_DecodeInfo) {
+	X8616_InfoList msgs;
 	U4 source_consumed;
 	U4 instruction_count;
-	U4 instruction_capacity;
-	X8616_InfoList msgs;
+	U4 instruction_cap;
 };
 
 X8616_DecodeInfo x8616_decode(X8616_DecodeRequest request);

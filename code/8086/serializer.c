@@ -2,10 +2,6 @@
 #	include "serializer.h"
 #endif
 
-enum {
-	X8616_SERIALIZE_HEADER_LEN = 9,
-};
-
 RO_ global Str8 x8616_serialize_header = slit8("bits 16\n\n");
 
 RO_ global Str8 x8616_serialize_mnemonic[] = {
@@ -162,12 +158,11 @@ FI_ X8616_SerializeStatus x8616_serialize_put_or_full(Str8Gen_R gen, Str8 piece)
 }
 
 internal B4 x8616_serialize_put_u4(Str8Gen_R gen, U4 value) {
-	Info_str8_from_u4 info = str8_from_u4_info(value, 10, 0, 0);
-	UTF8 digits[16];
-	B4 ok = info.size_required != 0 && info.size_required <= Array_len(digits) && info.size_required <= gen->cap - gen->len;
+	Info_str8_from_u4 info = str8_from_u4_info(value, 10, 0, 0); UTF8 digits[16];
+	B4  ok = info.size_required != 0 && info.size_required <= Array_len(digits) && info.size_required <= gen->cap - gen->len;
 	if (ok) {
 		Str8 text = str8_from_u4_buf(slice_ut(digits, info.size_required), value, 10, 0, 0, info);
-		ok = x8616_serialize_put(gen, text);
+		ok        = x8616_serialize_put(gen, text);
 	}
 	return ok;
 }
@@ -333,13 +328,13 @@ FI_ B4 x8616_serialize_is_string(X8616_Op op) { switch (op) {
 		return 0;
 }}
 
-FI_ B4 x8616_serialize_has_memory(X8616_DecodedInstruction* inst) {
+FI_ B4 x8616_serialize_has_memory(X8616_DecodedInstruction_R inst) {
 	for (U1 id = 0; id < inst->operand_count; ++id) { if (inst->operands[id].flags & x8616_decoded_operand_memory) return 1; }
 	return 0;
 }
 
 internal X8616_SerializeStatus
-x8616_serialize_put_operand(Str8Gen_R gen, X8616_DecodedInstruction* inst, X8616_DecodedOperand* operand)
+x8616_serialize_put_operand(Str8Gen_R gen, X8616_DecodedInstruction_R inst, X8616_DecodedOperand_R operand)
 {
 	X8616_SerializeStatus    status = x8616_serialize_ok;
 	X8616_SerializeSizeWhere where  = x8616_serialize_size_where(inst->op, inst->operand_count, inst->operands);
@@ -408,6 +403,21 @@ FI_ X8616_DecodedOperandFlags x8616_serialize_base_flags(X8616_DecodedOperandFla
 
 FI_ B4 x8616_serialize_one_flag(X8616_DecodedOperandFlags flags) { U2 bits = C_(U2, flags); return (bits != 0) && ((bits & (bits - 1)) == 0); }
 
+internal void
+x8616_serialize_push(FArena_R arena, X8616_InfoList_R msgs, X8616_SerializeStatus status, U4 id, U2 size, U4 expected, U4 actual) {
+	if (status == x8616_serialize_ok || arena == 0) return;
+	X8616_InfoKind kind = x8616_info_error;
+	X8616_InfoCode code = x8616_info_serialize_invalid_record;
+	if (status == x8616_serialize_output_full) {
+		kind = x8616_info_warning;
+		code = x8616_info_serialize_output_full;
+	}
+	else if (status == x8616_serialize_unsupported_form) {
+		code = x8616_info_serialize_unsupported_form;
+	}
+	x8616_info_push(arena, msgs, kind, code, id, size, expected, actual);
+}
+
 internal X8616_SerializeStatus
 x8616_serialize_validate(X8616_DecodedInstruction_R inst)
 {
@@ -452,7 +462,7 @@ status_failed:
 	return status;
 }
 
-internal X8616_SerializeStatus
+internal X8616_SerializeStatus 
 x8616_serialize_instruction_line(Str8Gen_R line, X8616_DecodedInstruction* inst)
 {
 	X8616_SerializeStatus st = x8616_serialize_ok;
@@ -477,7 +487,7 @@ x8616_serialize_instruction_line(Str8Gen_R line, X8616_DecodedInstruction* inst)
 	if (st == x8616_serialize_ok && inst->operand_count) {
 		st = x8616_serialize_put_or_full(line, slit8(" "));
 		for (U1 id = 0; st == x8616_serialize_ok && id < inst->operand_count; ++id) {
-			if (id) st = x8616_serialize_put_or_full(line, slit8(", "));
+			if (id)                       st = x8616_serialize_put_or_full(line, slit8(", "));
 			if (st == x8616_serialize_ok) st = x8616_serialize_put_operand(line, inst, & inst->operands[id]);
 		}
 	}
@@ -485,38 +495,70 @@ x8616_serialize_instruction_line(Str8Gen_R line, X8616_DecodedInstruction* inst)
 	return st;
 }
 
-X8616_SerializeInfo
-x8616_serialize_instructions(X8616_SerializeRequest request)
+X8616_SerializeInfo x8616_serialize_instructions(X8616_SerializeRequest request)
 {
 	X8616_SerializeInfo result = {0}; result.text.ptr = C_(UTF8*, request.output.ptr);
-	B4 invalid_record =
+	X8616_InfoList   local = {0};
+	X8616_InfoList_R msgs  = request.msgs ? request.msgs : & local;
+
+	B4 bad_request =
 	   (request.instruction_count && request.instructions == 0)
 	|| (request.output.len        && request.output.ptr   == 0)
-	|| (request.scratch.len       && request.scratch.ptr  == 0);
-	if (invalid_record)                                  { result.status = x8616_serialize_invalid_record; goto exit; }
-	if (request.output.len < X8616_SERIALIZE_HEADER_LEN) { result.status = x8616_serialize_output_full;    goto exit; }
+	|| (request.scratch.len       && request.scratch.ptr  == 0)
+	|| (request.info_arena        == 0);
+	if (bad_request)
+	{
+		if (request.info_arena) {
+			x8616_info_push(request.info_arena, msgs, x8616_info_error
+				, x8616_info_serialize_bad_request, 0, 0, 0, 0);
+		}
+		else {
+			msgs->count         += 1;
+			msgs->error_count   += 1;
+			msgs->dropped_count += 1;
+		}
+		goto exit;
+	}
+	if (request.output.len < x8616_serialize_header.len) {
+		x8616_serialize_push(request.info_arena, msgs, x8616_serialize_output_full
+			, 0, 0, u4_(x8616_serialize_header.len), u4_(request.output.len));
+		goto exit;
+	}
 
 	Str8Gen gen = str8gen_make(request.output);
-	if (x8616_serialize_header.len > gen.cap - gen.len)  { result.status = x8616_serialize_output_full; goto exit; }
 	str8gen_append_str8(& gen, x8616_serialize_header);
 	result.text.len = gen.len;
 
-	for (U4 id = 0; id < request.instruction_count; ++id) {
-		X8616_SerializeStatus line_status = x8616_serialize_validate(& request.instructions[id]);
-		if (line_status != x8616_serialize_ok) { result.status = line_status; goto exit; }
+	for (U4 id = 0; id < request.instruction_count; ++id)
+	{
+		X8616_DecodedInstruction_R inst = & request.instructions[id];
+		X8616_SerializeStatus line_status = x8616_serialize_validate(inst);
+		if (line_status != x8616_serialize_ok) {
+			x8616_serialize_push(request.info_arena, msgs, line_status
+				, id, inst->size, 0, u4_(inst->op));
+			continue;
+		}
 
 		Str8Gen line = str8gen_make(request.scratch);
-		line_status  = x8616_serialize_instruction_line(& line, & request.instructions[id]);
-		if (line_status != x8616_serialize_ok) { result.status = line_status; goto exit; }
+		line_status  = x8616_serialize_instruction_line(& line, inst);
+		if (line_status != x8616_serialize_ok) {
+			x8616_serialize_push(request.info_arena, msgs, line_status
+				, id, inst->size, u4_(request.scratch.len), u4_(line.len));
+			continue;
+		}
 
 		Str8 text = str8(line.ptr, line.len);
-		if (text.len > gen.cap - gen.len) { result.status = x8616_serialize_output_full; goto exit; }
+		if (text.len > gen.cap - gen.len) {
+			x8616_serialize_push(request.info_arena, msgs, x8616_serialize_output_full
+				, id, inst->size, u4_(request.output.len), u4_(gen.len));
+			goto exit;
+		}
 		str8gen_append_str8(& gen, text);
 		result.text.len              = gen.len;
 		result.instructions_written += 1;
 	}
 
-	result.status = x8616_serialize_ok;
 exit:
+	result.msgs = *msgs;
 	return result;
 }

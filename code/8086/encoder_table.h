@@ -3,15 +3,15 @@
 #	include "encoder.h"
 #endif
 
-// ============================================================================
+// =========================================================================================
 // Encoding Table
 //
-// Part 1 target: the instruction cross-section exercised by Computer Enhance
-// listing 0042. Later Part 1 simulation listings use a subset of this table.
+// Part 1 target: the instruction cross-section exercised by Computer Enhance listing 0042.
+// Later Part 1 simulation listings use a subset of this table.
 //
-// Fixed opcode bits are kept in binary/signature form; ModR/M /digit selectors
-// use their encoded enumeration values.
-// ============================================================================
+// Fixed opcode bits are kept in binary/signature form; 
+// ModR/M /digit selectors use their encoded enumeration values.
+// =========================================================================================
 
 RO_ global X8616_Encoding x8616_encodings[] =
 {

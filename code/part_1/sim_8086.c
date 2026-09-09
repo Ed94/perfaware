@@ -99,11 +99,11 @@ int main()
 	Slice_X8616_DecodedInstruction decoded = farena_push_array(& decode_arena, X8616_DecodedInstruction, data.len);
 
 	X8616_DecodeInfo info = x8616_decode_(
-		.source               = data.ptr,
-		.source_size          = data.len,
-		.instructions         = decoded.ptr,
-		.instruction_capacity = decoded.len,
-		.info_arena           = & decode_arena,
+		.source           = data.ptr,
+		.source_len       = data.len,
+		.out_instructions = decoded.ptr,
+		.instruction_cap  = decoded.len,
+		.info_arena       = & decode_arena,
 	);
 	if (info.source_consumed != data.len || info.instruction_count == 0 || info.msgs.error_count || info.msgs.dropped_count) {
 		ms_exit_process(10);
@@ -114,8 +114,10 @@ int main()
 		.instruction_count = info.instruction_count,
 		.output            = slice_ut_arr(smem.text_mem),
 		.scratch           = slice_ut_arr(smem.Scratchpad),
+		.info_arena        = & decode_arena,
+		.msgs              = & info.msgs,
 	});
-	if (text.status != x8616_serialize_ok || text.instructions_written != info.instruction_count) {
+	if (text.msgs.error_count || text.msgs.dropped_count || text.instructions_written != info.instruction_count) {
 		ms_exit_process(13);
 		return 13;
 	}

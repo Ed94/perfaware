@@ -26,6 +26,11 @@ typedef Enum_(U1, X8616_InfoCode) {
 	x8616_info_gen_ambiguous_decode     = 0x09,
 	x8616_info_gen_dispatch_mismatch    = 0x0A,
 
+	x8616_info_serialize_bad_request      = 0x0B,
+	x8616_info_serialize_invalid_record   = 0x0C,
+	x8616_info_serialize_unsupported_form = 0x0D,
+	x8616_info_serialize_output_full      = 0x0E,
+
 	x8616_info_count,
 };
 
@@ -35,8 +40,8 @@ typedef Struct_(X8616_InfoMsg) {
 	X8616_InfoMsg* next;
 	X8616_InfoKind kind;
 	X8616_InfoCode code;
-	U4   source_offset;
 	U2   source_size;
+	U4   source_offset;
 	U4   expected;
 	U4   actual;
 	Str8 text;
@@ -45,17 +50,21 @@ typedef Struct_(X8616_InfoMsg) {
 /* Static templates use the same <identifier> vocabulary as Duffle's str8_fmt_ktl_buf path.
    The decoder itself never expands these. */
 RO_ global Str8 x8616_info_templates[x8616_info_count] = {
-	[x8616_info_none]                     = slit8(""),
-	[x8616_info_invalid_opcode]           = slit8("Opcode <actual> is not in the Part 1 8086 decode table at <offset>."),
-	[x8616_info_invalid_opcode_extension] = slit8("Opcode extension <actual> does not match the selected encoding at <offset>."),
-	[x8616_info_invalid_post_opcode]      = slit8("Post-opcode byte <actual> does not match expected <expected> at <offset>."),
-	[x8616_info_truncated_instruction]    = slit8("Instruction at <offset> needs <expected> bytes; <actual> are available."),
-	[x8616_info_output_full]              = slit8("Decoded-instruction output is full: capacity <expected>, produced <actual>."),
-	[x8616_info_gen_multiple_payloads]    = slit8("Encoding <offset> describes more than one stream payload."),
-	[x8616_info_gen_body_cap_exceeded]    = slit8("Encoding <offset> requires <actual> body bytes; decoder body capacity is <expected>."),
-	[x8616_info_gen_aux_cap_exceeded]     = slit8("Generated auxiliary decode table exceeds capacity <expected>."),
-	[x8616_info_gen_ambiguous_decode]     = slit8("Decode is ambiguous for opcode/second-byte key <offset>: plans <expected> and <actual>."),
-	[x8616_info_gen_dispatch_mismatch]    = slit8("Generated dispatch mismatch for opcode/second-byte key <offset>: expected <expected>, actual <actual>."),
+	[x8616_info_none]                       = slit8(""),
+	[x8616_info_invalid_opcode]             = slit8("Opcode <actual> is not in the Part 1 8086 decode table at <offset>."),
+	[x8616_info_invalid_opcode_extension]   = slit8("Opcode extension <actual> does not match the selected encoding at <offset>."),
+	[x8616_info_invalid_post_opcode]        = slit8("Post-opcode byte <actual> does not match expected <expected> at <offset>."),
+	[x8616_info_truncated_instruction]      = slit8("Instruction at <offset> needs <expected> bytes; <actual> are available."),
+	[x8616_info_output_full]                = slit8("Decoded-instruction output is full: capacity <expected>, produced <actual>."),
+	[x8616_info_gen_multiple_payloads]      = slit8("Encoding <offset> describes more than one stream payload."),
+	[x8616_info_gen_body_cap_exceeded]      = slit8("Encoding <offset> requires <actual> body bytes; decoder body capacity is <expected>."),
+	[x8616_info_gen_aux_cap_exceeded]       = slit8("Generated auxiliary decode table exceeds capacity <expected>."),
+	[x8616_info_gen_ambiguous_decode]       = slit8("Decode is ambiguous for opcode/second-byte key <offset>: plans <expected> and <actual>."),
+	[x8616_info_gen_dispatch_mismatch]      = slit8("Generated dispatch mismatch for opcode/second-byte key <offset>: expected <expected>, actual <actual>."),
+	[x8616_info_serialize_bad_request]      = slit8("Serialize request is missing instructions, output, scratch, or info arena."),
+	[x8616_info_serialize_invalid_record]   = slit8("Serialize record <offset> is not printable (op <actual>)."),
+	[x8616_info_serialize_unsupported_form] = slit8("Serialize record <offset> has an unsupported display form (op <actual>)."),
+	[x8616_info_serialize_output_full]      = slit8("Serialize output is full at record <offset>: capacity <expected>, produced <actual>."),
 };
 
 typedef Struct_(X8616_InfoList) {

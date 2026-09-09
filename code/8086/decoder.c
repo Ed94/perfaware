@@ -39,18 +39,18 @@ typedef Struct_(X8616_DecodePlex) {
 	U1 post_opcode;
 	U1 mod_rm;
 
-	U1 d;
-	U1 w;
-	U1 s;
-	U1 v;
-	U1 z;
-	U1 reg_opcode;
-	U1 sr_opcode;
+	X8616_Direction     d;
+	X8616_Width         w;
+	X8616_Sign          s;
+	X8616_VariableShift v;
+	X8616_Repeat        z;
+	X8616_DecodedReg    reg_opcode;
+	X8616_Segment       sr_opcode;
 
-	U1 mod;
-	U1 reg;
-	U1 rm;
-	U1 sr_modrm;
+	X8616_Mod        mod;
+	X8616_DecodedReg reg;
+	X8616_EA         rm;
+	X8616_Segment    sr_modrm;
 
 	X8616_WidthMode width;
 
@@ -103,11 +103,11 @@ x8616_decode_apply_prefix(X8616_DecodePlex_R plex, X8616_DecodePlan_R plan, U1 o
 	plex->prefixes.lock  |= plan->prefix_kind == x8616_prefix_lock;
 	if (plan->prefix_kind == x8616_prefix_repeat) {
 		plex->prefixes.has_repeat = 1;
-		plex->prefixes.repeat     = (opcode >> plan->z_shift) & 0b1;
+		plex->prefixes.repeat     = C_(X8616_Repeat, (opcode >> plan->z_shift) & 0b1);
 	}
 	if (plan->prefix_kind == x8616_prefix_segment) {
 		plex->prefixes.has_segment = 1;
-		plex->prefixes.segment     = (opcode >> plan->sr_shift) & 0b11;
+		plex->prefixes.segment     = C_(X8616_Segment, (opcode >> plan->sr_shift) & 0b11);
 	}
 }
 
@@ -251,13 +251,13 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	}
 
 	X8616_DecodePlan const* plan = plex->plan;
-	plex->d          = (plex->opcode >> plan->d_shift)   & 0b1;
-	plex->w          = (plex->opcode >> plan->w_shift)   & 0b1;
-	plex->s          = (plex->opcode >> plan->s_shift)   & 0b1;
-	plex->v          = (plex->opcode >> plan->v_shift)   & 0b1;
-	plex->z          = (plex->opcode >> plan->z_shift)   & 0b1;
-	plex->reg_opcode = (plex->opcode >> plan->reg_shift) & 0b111;
-	plex->sr_opcode  = (plex->opcode >> plan->sr_shift)  & 0b11;
+	plex->d              = C_(X8616_Direction,     (plex->opcode >> plan->d_shift)   & 0b1);
+	plex->w              = C_(X8616_Width,         (plex->opcode >> plan->w_shift)   & 0b1);
+	plex->s              = C_(X8616_Sign,          (plex->opcode >> plan->s_shift)   & 0b1);
+	plex->v              = C_(X8616_VariableShift, (plex->opcode >> plan->v_shift)   & 0b1);
+	plex->z              = C_(X8616_Repeat,        (plex->opcode >> plan->z_shift)   & 0b1);
+	plex->reg_opcode.r16 = C_(X8616_Reg16,        (plex->opcode >> plan->reg_shift) & 0b111);
+	plex->sr_opcode      = C_(X8616_Segment,       (plex->opcode >> plan->sr_shift)  & 0b11);
 
 	plex->width = plan->width;
 	if (plex->width == x8616_width_dynamic && (plan->flags & x8616_plan_has_w))
@@ -272,16 +272,16 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 
 	if (plan->flags & x8616_plan_has_modrm) {
 		plex->mod_rm   = plex->body[plex->body_at];
-		plex->mod      = x8616_modrm_mod(plex->mod_rm);
-		plex->reg      = x8616_modrm_reg(plex->mod_rm);
-		plex->rm       = x8616_modrm_rm(plex->mod_rm);
-		plex->sr_modrm = x8616_modrm_sr(plex->mod_rm);
+		plex->mod      = C_(X8616_Mod,     x8616_modrm_mod(plex->mod_rm));
+		plex->reg.r16  = C_(X8616_Reg16,   x8616_modrm_reg(plex->mod_rm));
+		plex->rm       = C_(X8616_EA,      x8616_modrm_rm(plex->mod_rm));
+		plex->sr_modrm = C_(X8616_Segment, x8616_modrm_sr(plex->mod_rm));
 		plex->body_at += 1;
 	}
 
 	plex->displacement_at = plex->body_at;
 
-	if (plan->flags & x8616_plan_uses_rm) plex->displacement_bytes = x8616_decode_disp_bytes[(plex->mod << 3) | plex->rm];
+	if (plan->flags & x8616_plan_uses_rm) plex->displacement_bytes = x8616_decode_disp_bytes[(u1_(plex->mod) << 3) | u1_(plex->rm)];
 
 	plex->direct_memory = (plan->flags & x8616_plan_uses_rm) && plex->mod == x8616_mod_mem && plex->rm  == x8616_ea_direct;
 
@@ -321,19 +321,19 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 
 	source[x8616_operand_reg_modrm].flags   = x8616_decoded_operand_register;
 	source[x8616_operand_reg_modrm].width   = plex->width;
-	source[x8616_operand_reg_modrm].reg.r16 = C_(X8616_Reg16, plex->reg);
+	source[x8616_operand_reg_modrm].reg = plex->reg;
 
 	source[x8616_operand_reg_opcode].flags   = x8616_decoded_operand_register;
 	source[x8616_operand_reg_opcode].width   = plex->width;
-	source[x8616_operand_reg_opcode].reg.r16 = C_(X8616_Reg16, plex->reg_opcode);
+	source[x8616_operand_reg_opcode].reg = plex->reg_opcode;
 
 	source[x8616_operand_segment_modrm].flags   = x8616_decoded_operand_segment;
 	source[x8616_operand_segment_modrm].width   = x8616_width_word;
-	source[x8616_operand_segment_modrm].segment = C_(X8616_Segment, plex->sr_modrm);
+	source[x8616_operand_segment_modrm].segment = plex->sr_modrm;
 
 	source[x8616_operand_segment_opcode].flags   = x8616_decoded_operand_segment;
 	source[x8616_operand_segment_opcode].width   = x8616_width_word;
-	source[x8616_operand_segment_opcode].segment = C_(X8616_Segment, plex->sr_opcode);
+	source[x8616_operand_segment_opcode].segment = plex->sr_opcode;
 
 	source[x8616_operand_acc].flags   = x8616_decoded_operand_register | x8616_decoded_operand_implicit;
 	source[x8616_operand_acc].width   = plex->width;
@@ -350,8 +350,8 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	}
 	else {
 		source[x8616_operand_rm].flags              = x8616_decoded_operand_memory;
-		source[x8616_operand_rm].mod                = C_(X8616_Mod, plex->mod);
-		source[x8616_operand_rm].ea                 = C_(X8616_EA,  plex->rm);
+		source[x8616_operand_rm].mod                = plex->mod;
+		source[x8616_operand_rm].ea                 = plex->rm;
 		source[x8616_operand_rm].displacement       = plex->displacement;
 		source[x8616_operand_rm].displacement_bytes = plex->displacement_bytes;
 		if (plex->direct_memory) {
@@ -407,7 +407,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	}
 
 	// Final projection. Authored operand order is d=0; d=1 exchanges the two source slots without introducing a separate decoder path.
-	U1 swap = C_(U1, ((plan->flags & x8616_plan_has_d) != 0) & plex->d);
+	U1 swap = C_(U1, ((plan->flags & x8616_plan_has_d) != 0) & u1_(plex->d));
 	plex->instruction.operands[swap]     = source[plan->operands[0]];
 	plex->instruction.operands[swap ^ 1] = source[plan->operands[1]];
 
@@ -416,11 +416,11 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	plex->instruction.decode_flags  = (plex->encoding_invalid ? x8616_decode_invalid : 0) | (plex->classification_truncated ? x8616_decode_truncated : 0);
 	plex->instruction.width         = plex->width;
 	plex->instruction.prefixes      = plex->prefixes;
-	plex->instruction.operand_count  = plan->operand_count;
-	plex->instruction.opcode         = x8616_decode_opcode(plan, plex->opcode);
-	plex->instruction.d              = C_(X8616_Direction, (plan->flags & x8616_plan_has_d) ? plex->d : 0);
-	plex->instruction.w              = C_(X8616_Width,     (plan->flags & x8616_plan_has_w) ? plex->w : 0);
-	plex->instruction.has_mod_rm     = (plan->flags & x8616_plan_has_modrm) != 0;
+	plex->instruction.operand_count = plan->operand_count;
+	plex->instruction.opcode        = x8616_decode_opcode(plan, plex->opcode);
+	plex->instruction.d             = (plan->flags & x8616_plan_has_d) ? plex->d : x8616_d_rm_dst;
+	plex->instruction.w             = (plan->flags & x8616_plan_has_w) ? plex->w : x8616_w_byte;
+	plex->instruction.has_mod_rm    = (plan->flags & x8616_plan_has_modrm) != 0;
 
 	U4 total_required  = prefix_at + plex->body_required;
 	U4 total_available = plex->source_size;
@@ -435,27 +435,28 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 X8616_DecodeInfo x8616_decode(X8616_DecodeRequest request)
 {
 	X8616_DecodeInfo result = {0};
-	result.instruction_capacity = request.instruction_capacity;
+	result.instruction_cap = request.instruction_cap;
 
-	while (result.source_consumed < request.source_size && result.instruction_count < request.instruction_capacity) {
+	while (result.source_consumed < request.source_len && result.instruction_count < request.instruction_cap) {
 		X8616_DecodePlex plex = {0};
 		plex.source        = request.source + result.source_consumed;
-		plex.source_size   = request.source_size - result.source_consumed;
+		plex.source_size   = request.source_len - result.source_consumed;
 		plex.source_offset = result.source_consumed;
 		plex.info_arena    = request.info_arena;
 		plex.msgs          = & result.msgs;
 		U4 consumed = x8616_decode_one_plex(& plex);
-		request.instructions[result.instruction_count++] = plex.instruction;
+		request.out_instructions[result.instruction_count] = plex.instruction; 
+		result.instruction_count += 1;
 		if (consumed == false) consumed = 1;
 		result.source_consumed += consumed;
 	}
 
-	if (result.source_consumed < request.source_size && result.instruction_count == request.instruction_capacity) {
+	if (result.source_consumed < request.source_len && result.instruction_count == request.instruction_cap) {
 		x8616_info_push(request.info_arena, & result.msgs, x8616_info_warning
 			, x8616_info_output_full
 			, result.source_consumed
 			, 0
-			, request.instruction_capacity
+			, request.instruction_cap
 			, result.instruction_count
 		);
 	}
