@@ -549,42 +549,42 @@ enum {
 
 	X8616_OPCODE_DW_W_SHIFT      = 0,
 	X8616_OPCODE_DW_D_SHIFT      = 1,
-	X8616_OPCODE_DW_PREFIX_SHIFT = X8616_OPCODE_DW_D_SHIFT + 1,
-	X8616_OPCODE_DW_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_DW_PREFIX_SHIFT),
+	X8616_OPCODE_DW_HOLE = X8616_OPCODE_DW_D_SHIFT + 1,
+	X8616_OPCODE_DW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_DW_HOLE),
 
 // ... s w
 
 	X8616_OPCODE_SW_W_SHIFT      = 0,
 	X8616_OPCODE_SW_S_SHIFT      = 1,
-	X8616_OPCODE_SW_PREFIX_SHIFT = X8616_OPCODE_SW_S_SHIFT + 1,
-	X8616_OPCODE_SW_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_SW_PREFIX_SHIFT),
+	X8616_OPCODE_SW_HOLE = X8616_OPCODE_SW_S_SHIFT + 1,
+	X8616_OPCODE_SW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_SW_HOLE),
 
 // ... v w
 
 	X8616_OPCODE_VW_W_SHIFT      = 0,
 	X8616_OPCODE_VW_V_SHIFT      = 1,
-	X8616_OPCODE_VW_PREFIX_SHIFT = X8616_OPCODE_VW_V_SHIFT + 1,
-	X8616_OPCODE_VW_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_VW_PREFIX_SHIFT),
+	X8616_OPCODE_VW_HOLE = X8616_OPCODE_VW_V_SHIFT + 1,
+	X8616_OPCODE_VW_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_VW_HOLE),
 
 // ... z
 
 	X8616_OPCODE_Z_Z_SHIFT      = 0,
-	X8616_OPCODE_Z_PREFIX_SHIFT = X8616_OPCODE_Z_Z_SHIFT + 1,
-	X8616_OPCODE_Z_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_Z_PREFIX_SHIFT),
+	X8616_OPCODE_Z_HOLE = X8616_OPCODE_Z_Z_SHIFT + 1,
+	X8616_OPCODE_Z_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_Z_HOLE),
 
 // ... w
 
 	X8616_OPCODE_W_W_SHIFT      = 0,
-	X8616_OPCODE_W_PREFIX_SHIFT = X8616_OPCODE_W_W_SHIFT + 1,
-	X8616_OPCODE_W_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_W_PREFIX_SHIFT),
+	X8616_OPCODE_W_HOLE = X8616_OPCODE_W_W_SHIFT + 1,
+	X8616_OPCODE_W_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_W_HOLE),
 
 // ... reg
 
 	X8616_OPCODE_REG_REG_SHIFT    = 0,
 	X8616_OPCODE_REG_REG_WIDTH    = 3,
 	X8616_OPCODE_REG_REG_MASK     = x8616_field_mask(X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH),
-	X8616_OPCODE_REG_PREFIX_SHIFT = X8616_OPCODE_REG_REG_SHIFT + X8616_OPCODE_REG_REG_WIDTH,
-	X8616_OPCODE_REG_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_REG_PREFIX_SHIFT),
+	X8616_OPCODE_REG_HOLE = X8616_OPCODE_REG_REG_SHIFT + X8616_OPCODE_REG_REG_WIDTH,
+	X8616_OPCODE_REG_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_REG_HOLE),
 
 // ... w reg
 
@@ -593,14 +593,14 @@ enum {
 	X8616_OPCODE_WREG_REG_MASK     = x8616_field_mask(X8616_OPCODE_WREG_REG_SHIFT, X8616_OPCODE_WREG_REG_WIDTH),
 	X8616_OPCODE_WREG_W_SHIFT      = X8616_OPCODE_WREG_REG_SHIFT + X8616_OPCODE_WREG_REG_WIDTH,
 	X8616_OPCODE_WREG_W_MASK       = x8616_field_mask(X8616_OPCODE_WREG_W_SHIFT, 1),
-	X8616_OPCODE_WREG_PREFIX_SHIFT = X8616_OPCODE_WREG_W_SHIFT + 1,
-	X8616_OPCODE_WREG_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_WREG_PREFIX_SHIFT),
+	X8616_OPCODE_WREG_HOLE = X8616_OPCODE_WREG_W_SHIFT + 1,
+	X8616_OPCODE_WREG_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_WREG_HOLE),
 
 // ... d 0  (bit 0 fixed, bit 1 = d, bits 7-2 = stem)
 
 	X8616_OPCODE_D0_D_SHIFT      = 1,
-	X8616_OPCODE_D0_PREFIX_SHIFT = X8616_OPCODE_D0_D_SHIFT + 1,
-	X8616_OPCODE_D0_PREFIX_MASK  = x8616_header_opcode_mask(X8616_OPCODE_D0_PREFIX_SHIFT) | x8616_field_mask(0, 1),
+	X8616_OPCODE_D0_HOLE = X8616_OPCODE_D0_D_SHIFT + 1,
+	X8616_OPCODE_D0_OPCODE_MASK  = x8616_header_opcode_mask(X8616_OPCODE_D0_HOLE) | x8616_field_mask(0, 1),
 
 // class(3) | sr(2) | low(3)
 
@@ -618,7 +618,7 @@ enum {
 	X8616_OPCODE_CC_SHIFT        = 0,
 	X8616_OPCODE_CC_WIDTH        = 4,
 	X8616_OPCODE_CC_MASK         = x8616_field_mask(X8616_OPCODE_CC_SHIFT, X8616_OPCODE_CC_WIDTH),
-	X8616_OPCODE_CC_PREFIX_SHIFT = X8616_OPCODE_CC_WIDTH,
+	X8616_OPCODE_CC_HOLE = X8616_OPCODE_CC_WIDTH,
 
 // 00 ttt ...
 
@@ -635,16 +635,16 @@ enum {
 
 	X8616_OPCODE_PAIR_SHIFT = 3,
 	X8616_OPCODE_PAIR_WIDTH = 1,
-	X8616_OPCODE_PAIR_REG_PREFIX_SHIFT = X8616_OPCODE_PAIR_SHIFT + X8616_OPCODE_PAIR_WIDTH,
+	X8616_OPCODE_PAIR_REG_HOLE = X8616_OPCODE_PAIR_SHIFT + X8616_OPCODE_PAIR_WIDTH,
 	X8616_OPCODE_IO_CLASS        = 0b1110,
 	X8616_OPCODE_IO_CLASS_SHIFT  = 4,
 	X8616_OPCODE_IO_DX_SHIFT     = 3,
 	X8616_OPCODE_IO_FIXED_SHIFT  = 2,
 	X8616_OPCODE_IO_OUT_SHIFT    = 1,
 	X8616_OPCODE_IO_FIXED_FORM   = 0b10,
-	X8616_OPCODE_IO_CLASS_STEM_SHIFT = X8616_OPCODE_IO_CLASS_SHIFT - X8616_OPCODE_W_PREFIX_SHIFT,
-	X8616_OPCODE_IO_DX_STEM_SHIFT    = X8616_OPCODE_IO_DX_SHIFT    - X8616_OPCODE_W_PREFIX_SHIFT,
-	X8616_OPCODE_IO_OUT_STEM_SHIFT   = X8616_OPCODE_IO_OUT_SHIFT   - X8616_OPCODE_W_PREFIX_SHIFT,
+	X8616_OPCODE_IO_CLASS_STEM_SHIFT = X8616_OPCODE_IO_CLASS_SHIFT - X8616_OPCODE_W_HOLE,
+	X8616_OPCODE_IO_DX_STEM_SHIFT    = X8616_OPCODE_IO_DX_SHIFT    - X8616_OPCODE_W_HOLE,
+	X8616_OPCODE_IO_OUT_STEM_SHIFT   = X8616_OPCODE_IO_OUT_SHIFT   - X8616_OPCODE_W_HOLE,
 };
 
 // ============================================================================
@@ -674,14 +674,14 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 
 // Byte fields
 
-#define x8616_enc_dw_prefix(prefix)   ((prefix) << X8616_OPCODE_DW_PREFIX_SHIFT)
-#define x8616_enc_sw_prefix(prefix)   ((prefix) << X8616_OPCODE_SW_PREFIX_SHIFT)
-#define x8616_enc_vw_prefix(prefix)   ((prefix) << X8616_OPCODE_VW_PREFIX_SHIFT)
-#define x8616_enc_z_prefix(prefix)    ((prefix) << X8616_OPCODE_Z_PREFIX_SHIFT)
-#define x8616_enc_w_prefix(prefix)    ((prefix) << X8616_OPCODE_W_PREFIX_SHIFT)
-#define x8616_enc_reg_prefix(prefix)  ((prefix) << X8616_OPCODE_REG_PREFIX_SHIFT)
-#define x8616_enc_wreg_prefix(prefix) ((prefix) << X8616_OPCODE_WREG_PREFIX_SHIFT)
-#define x8616_enc_d0_prefix(prefix)   ((prefix) << X8616_OPCODE_D0_PREFIX_SHIFT)
+#define x8616_enc_dw_opcode(opcode)   ((opcode) << X8616_OPCODE_DW_HOLE)
+#define x8616_enc_sw_opcode(opcode)   ((opcode) << X8616_OPCODE_SW_HOLE)
+#define x8616_enc_vw_opcode(opcode)   ((opcode) << X8616_OPCODE_VW_HOLE)
+#define x8616_enc_z_opcode(opcode)    ((opcode) << X8616_OPCODE_Z_HOLE)
+#define x8616_enc_w_opcode(opcode)    ((opcode) << X8616_OPCODE_W_HOLE)
+#define x8616_enc_reg_opcode(opcode)  ((opcode) << X8616_OPCODE_REG_HOLE)
+#define x8616_enc_wreg_opcode(opcode) ((opcode) << X8616_OPCODE_WREG_HOLE)
+#define x8616_enc_d0_opcode(opcode)   ((opcode) << X8616_OPCODE_D0_HOLE)
 
 #define x8616_enc_d(d)          ((d)  << X8616_OPCODE_DW_D_SHIFT)
 #define x8616_enc_s(s)          ((s)  << X8616_OPCODE_SW_S_SHIFT)
@@ -698,22 +698,22 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_enc_modrm_rm(rm)   ((rm)  << X8616_MODRM_RM_SHIFT)
 #define x8616_enc_modrm_sr(sr)   ((sr)  << X8616_MODRM_SR_SHIFT)
 
-#define x8616_enc_dw(prefix,d,w)       C_(U1, x8616_enc_dw_prefix(prefix)   | x8616_enc_d(d)          | x8616_enc_width(w))
-#define x8616_enc_sw(prefix,s,w)       C_(U1, x8616_enc_sw_prefix(prefix)   | x8616_enc_s(s)          | x8616_enc_width(w))
-#define x8616_enc_vw(prefix,v,w)       C_(U1, x8616_enc_vw_prefix(prefix)   | x8616_enc_v(v)          | x8616_enc_width(w))
-#define x8616_enc_zp(prefix,z)         C_(U1, x8616_enc_z_prefix(prefix)    | x8616_enc_z(z))
-#define x8616_enc_w(prefix,w)          C_(U1, x8616_enc_w_prefix(prefix)    | x8616_enc_width(w))
-#define x8616_enc_reg(prefix,reg)      C_(U1, x8616_enc_reg_prefix(prefix)  | x8616_enc_opcode_reg(reg))
-#define x8616_enc_wreg(prefix,w,reg)   C_(U1, x8616_enc_wreg_prefix(prefix) | x8616_enc_wreg_width(w) | x8616_enc_opcode_reg(reg))
-#define x8616_enc_d0(prefix,d)         C_(U1, x8616_enc_d0_prefix(prefix)   | x8616_enc_d(d))
+#define x8616_enc_dw(opcode,d,w)       C_(U1, x8616_enc_dw_opcode(opcode)   | x8616_enc_d(d)          | x8616_enc_width(w))
+#define x8616_enc_sw(opcode,s,w)       C_(U1, x8616_enc_sw_opcode(opcode)   | x8616_enc_s(s)          | x8616_enc_width(w))
+#define x8616_enc_vw(opcode,v,w)       C_(U1, x8616_enc_vw_opcode(opcode)   | x8616_enc_v(v)          | x8616_enc_width(w))
+#define x8616_enc_zp(opcode,z)         C_(U1, x8616_enc_z_opcode(opcode)    | x8616_enc_z(z))
+#define x8616_enc_w(opcode,w)          C_(U1, x8616_enc_w_opcode(opcode)    | x8616_enc_width(w))
+#define x8616_enc_reg(opcode,reg)      C_(U1, x8616_enc_reg_opcode(opcode)  | x8616_enc_opcode_reg(reg))
+#define x8616_enc_wreg(opcode,w,reg)   C_(U1, x8616_enc_wreg_opcode(opcode) | x8616_enc_wreg_width(w) | x8616_enc_opcode_reg(reg))
+#define x8616_enc_d0(opcode,d)         C_(U1, x8616_enc_d0_opcode(opcode)   | x8616_enc_d(d))
 #define x8616_enc_sr(class,sr,low)     C_(U1, ((class) << X8616_OPCODE_SR_CLASS_SHIFT) | x8616_enc_opcode_sr(sr) | (low))
-#define x8616_enc_jcc(cc)              C_(U1, (x8616_opcode_jcc << X8616_OPCODE_CC_PREFIX_SHIFT) | x8616_enc_cc(cc))
+#define x8616_enc_jcc(cc)              C_(U1, (x8616_opcode_jcc << X8616_OPCODE_CC_HOLE) | x8616_enc_cc(cc))
 #define x8616_enc_modrm(mod,reg,rm)    C_(U1, x8616_enc_modrm_mod(mod) | x8616_enc_modrm_reg(reg) | x8616_enc_modrm_rm(rm))
 #define x8616_enc_modrm_seg(mod,sr,rm) C_(U1, x8616_enc_modrm_mod(mod) | x8616_enc_modrm_sr(sr)   | x8616_enc_modrm_rm(rm))
 
 #define x8616_header_w(opcode,w)   ((X8616_BytePattern){ x8616_enc_w((opcode), (w)), X8616_BYTE_MASK })
 #define x8616_header_sr(class,low) ((X8616_BytePattern){ u1_(((class) << X8616_OPCODE_SR_CLASS_SHIFT) | (low)), X8616_OPCODE_SR_PATTERN_MASK })
-#define x8616_header_d0(opcode)    ((X8616_BytePattern){ u1_((opcode) << X8616_OPCODE_D0_PREFIX_SHIFT), X8616_OPCODE_D0_PREFIX_MASK })
+#define x8616_header_d0(opcode)    ((X8616_BytePattern){ u1_((opcode) << X8616_OPCODE_D0_HOLE), X8616_OPCODE_D0_OPCODE_MASK })
 
 #define x8616_enc_alu_class()              (X8616_OPCODE_ALU_CLASS << X8616_OPCODE_ALU_CLASS_SHIFT)
 #define x8616_enc_alu_ttt(ttt)             ((ttt) << X8616_OPCODE_ALU_TTT_SHIFT)
@@ -724,7 +724,7 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_enc_io_dx(dx)                ((dx)  << X8616_OPCODE_IO_DX_STEM_SHIFT)
 #define x8616_enc_io_out(out)              ((out) << X8616_OPCODE_IO_OUT_STEM_SHIFT)
 #define x8616_enc_io_stem(dx, out)         (x8616_enc_io_class() | x8616_enc_io_dx(dx) | X8616_OPCODE_IO_FIXED_FORM | x8616_enc_io_out(out))
-#define x8616_enc_io(dx, out, w)           C_(U1, (x8616_enc_io_stem(dx, out) << X8616_OPCODE_W_PREFIX_SHIFT) | x8616_enc_width(w))
+#define x8616_enc_io(dx, out, w)           C_(U1, (x8616_enc_io_stem(dx, out) << X8616_OPCODE_W_HOLE) | x8616_enc_width(w))
 #define x8616_enc_pair(bit)                ((bit) << X8616_OPCODE_PAIR_SHIFT)
 
 // Scalar / generic packets
@@ -749,24 +749,24 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 
 // r/m + register / immediate packets
 
-#define x8616_emit_rm_r(prefix,d,w,mod,reg,rm)      x8616_enc_dw   (prefix,d,w), x8616_enc_modrm(mod,reg,rm)
-#define x8616_emit_rm_r_d8(prefix,d,w,reg,rm,disp)  x8616_emit_rm_r(prefix,d,w,x8616_mod_mem_d8, reg,rm),          u1_(disp)
-#define x8616_emit_rm_r_d16(prefix,d,w,reg,rm,disp) x8616_emit_rm_r(prefix,d,w,x8616_mod_mem_d16,reg,rm),          x8616_emit_s2(disp)
-#define x8616_emit_rm_r_direct(prefix,d,w,reg,addr) x8616_emit_rm_r(prefix,d,w,x8616_mod_mem,reg,x8616_ea_direct), x8616_emit_u2(addr)
+#define x8616_emit_rm_r(opcode,d,w,mod,reg,rm)      x8616_enc_dw   (opcode,d,w), x8616_enc_modrm(mod,reg,rm)
+#define x8616_emit_rm_r_d8(opcode,d,w,reg,rm,disp)  x8616_emit_rm_r(opcode,d,w,x8616_mod_mem_d8, reg,rm),          u1_(disp)
+#define x8616_emit_rm_r_d16(opcode,d,w,reg,rm,disp) x8616_emit_rm_r(opcode,d,w,x8616_mod_mem_d16,reg,rm),          x8616_emit_s2(disp)
+#define x8616_emit_rm_r_direct(opcode,d,w,reg,addr) x8616_emit_rm_r(opcode,d,w,x8616_mod_mem,reg,x8616_ea_direct), x8616_emit_u2(addr)
 
-#define x8616_emit_rm_i8_w(prefix,ext,mod,rm,imm)       x8616_enc_w(prefix,x8616_w_byte), x8616_enc_modrm(mod,ext,rm), u1_(imm)
-#define x8616_emit_rm_i16_w(prefix,ext,mod,rm,imm)      x8616_enc_w(prefix,x8616_w_word), x8616_enc_modrm(mod,ext,rm), x8616_emit_u2(imm)
-#define x8616_emit_rm_i8_w_d8(prefix,ext,rm,disp,imm)   x8616_enc_w(prefix,x8616_w_byte), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm), u1_(disp), u1_(imm)
-#define x8616_emit_rm_i16_w_d8(prefix,ext,rm,disp,imm)  x8616_enc_w(prefix,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm), u1_(disp), x8616_emit_u2(imm)
-#define x8616_emit_rm_i8_w_d16(prefix,ext,rm,disp,imm)  x8616_enc_w(prefix,x8616_w_byte), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), u1_(imm)
-#define x8616_emit_rm_i16_w_d16(prefix,ext,rm,disp,imm) x8616_enc_w(prefix,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), x8616_emit_u2(imm)
+#define x8616_emit_rm_i8_w(opcode,ext,mod,rm,imm)       x8616_enc_w(opcode,x8616_w_byte), x8616_enc_modrm(mod,ext,rm), u1_(imm)
+#define x8616_emit_rm_i16_w(opcode,ext,mod,rm,imm)      x8616_enc_w(opcode,x8616_w_word), x8616_enc_modrm(mod,ext,rm), x8616_emit_u2(imm)
+#define x8616_emit_rm_i8_w_d8(opcode,ext,rm,disp,imm)   x8616_enc_w(opcode,x8616_w_byte), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm), u1_(disp), u1_(imm)
+#define x8616_emit_rm_i16_w_d8(opcode,ext,rm,disp,imm)  x8616_enc_w(opcode,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm), u1_(disp), x8616_emit_u2(imm)
+#define x8616_emit_rm_i8_w_d16(opcode,ext,rm,disp,imm)  x8616_enc_w(opcode,x8616_w_byte), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), u1_(imm)
+#define x8616_emit_rm_i16_w_d16(opcode,ext,rm,disp,imm) x8616_enc_w(opcode,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), x8616_emit_u2(imm)
 
-#define x8616_emit_rm_i8(prefix,s,w,ext,mod,rm,imm)      x8616_enc_sw(prefix,s,w),                       x8616_enc_modrm(mod,ext,rm),               u1_(imm)
-#define x8616_emit_rm_i16(prefix,ext,mod,rm,imm)         x8616_enc_sw(prefix,x8616_s_full,x8616_w_word), x8616_enc_modrm(mod,ext,rm),               x8616_emit_u2(imm)
-#define x8616_emit_rm_i8_d8(prefix,s,w,ext,rm,disp,imm)  x8616_enc_sw(prefix,s,w),                       x8616_enc_modrm(x8616_mod_mem_d8,ext,rm),  u1_(disp), u1_(imm)
-#define x8616_emit_rm_i16_d8(prefix,ext,rm,disp,imm)     x8616_enc_sw(prefix,x8616_s_full,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm),  u1_(disp), x8616_emit_u2(imm)
-#define x8616_emit_rm_i8_d16(prefix,s,w,ext,rm,disp,imm) x8616_enc_sw(prefix,s,w),                       x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), u1_(imm)
-#define x8616_emit_rm_i16_d16(prefix,ext,rm,disp,imm)    x8616_enc_sw(prefix,x8616_s_full,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), x8616_emit_u2(imm)
+#define x8616_emit_rm_i8(opcode,s,w,ext,mod,rm,imm)      x8616_enc_sw(opcode,s,w),                       x8616_enc_modrm(mod,ext,rm),               u1_(imm)
+#define x8616_emit_rm_i16(opcode,ext,mod,rm,imm)         x8616_enc_sw(opcode,x8616_s_full,x8616_w_word), x8616_enc_modrm(mod,ext,rm),               x8616_emit_u2(imm)
+#define x8616_emit_rm_i8_d8(opcode,s,w,ext,rm,disp,imm)  x8616_enc_sw(opcode,s,w),                       x8616_enc_modrm(x8616_mod_mem_d8,ext,rm),  u1_(disp), u1_(imm)
+#define x8616_emit_rm_i16_d8(opcode,ext,rm,disp,imm)     x8616_enc_sw(opcode,x8616_s_full,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d8,ext,rm),  u1_(disp), x8616_emit_u2(imm)
+#define x8616_emit_rm_i8_d16(opcode,s,w,ext,rm,disp,imm) x8616_enc_sw(opcode,s,w),                       x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), u1_(imm)
+#define x8616_emit_rm_i16_d16(opcode,ext,rm,disp,imm)    x8616_enc_sw(opcode,x8616_s_full,x8616_w_word), x8616_enc_modrm(x8616_mod_mem_d16,ext,rm), x8616_emit_s2(disp), x8616_emit_u2(imm)
 
 // Segment-register packet
 

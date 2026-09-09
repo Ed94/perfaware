@@ -331,13 +331,13 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 
 	X8616_DecodedOperand* source = plex->operand_source;
 
-	source[x8616_operand_reg_modrm].flags   = x8616_decoded_operand_register;
-	source[x8616_operand_reg_modrm].width   = plex->width;
-	source[x8616_operand_reg_modrm].reg = plex->reg;
+	source[x8616_operand_reg_modrm].flags = x8616_decoded_operand_register;
+	source[x8616_operand_reg_modrm].width = plex->width;
+	source[x8616_operand_reg_modrm].reg   = plex->reg;
 
-	source[x8616_operand_reg_opcode].flags   = x8616_decoded_operand_register;
-	source[x8616_operand_reg_opcode].width   = plex->width;
-	source[x8616_operand_reg_opcode].reg = plex->reg_opcode;
+	source[x8616_operand_reg_opcode].flags = x8616_decoded_operand_register;
+	source[x8616_operand_reg_opcode].width = plex->width;
+	source[x8616_operand_reg_opcode].reg   = plex->reg_opcode;
 
 	source[x8616_operand_segment_modrm].flags   = x8616_decoded_operand_segment;
 	source[x8616_operand_segment_modrm].width   = x8616_width_word;
