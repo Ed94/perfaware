@@ -7,7 +7,7 @@ FI_ void x8616_parse_skip_ws(Str8_R cur) {
 	while (cur->len && char_is_space(cur->ptr[0])) { cur->ptr += 1; cur->len -= 1; }
 }
 
-FI_ B4 x8616_parse_eat(Str8_R cur, Str8 lit) {
+FI_ B4 x8616_parse_walk(Str8_R cur, Str8 lit) {
 	B4 too_big = cur->len < lit.len;
 	B4 miss    = too_big || mem_match(u8_(cur->ptr), u8_(lit.ptr), lit.len) == 0;
 	if (miss) return 0;
@@ -41,7 +41,7 @@ FI_ U4 x8616_parse_lookup(Str8_R cur, Str8* table, U4 table_len) {
 FI_ B4 x8616_parse_number(Str8_R cur, U2_R value, B4_R neg_out) {
 	x8616_parse_skip_ws(cur);
 	B4 neg = 0;
-	if (x8616_parse_eat(cur, slit8("-"))) neg = 1;
+	if (x8616_parse_walk(cur, slit8("-"))) neg = 1;
 	if (cur->len == 0 || char_is_digit(cur->ptr[0], 10) == 0) return 0;
 	U8 start = 0;
 	while (start < cur->len && char_is_digit(cur->ptr[start], 10)) start += 1;
@@ -56,7 +56,7 @@ FI_ B4 x8616_parse_number(Str8_R cur, U2_R value, B4_R neg_out) {
 internal B4 x8616_parse_memory(Str8_R cur, X8616_DecodedOperand_R op)
 {
 	B4 ok = 1;
-	if (x8616_parse_eat(cur, slit8("[")) == 0) { ok = 0; goto exit; }
+	if (x8616_parse_walk(cur, slit8("[")) == 0) { ok = 0; goto exit; }
 	x8616_parse_skip_ws(cur);
 
 	U4 ea_n = Array_len(x8616_serialize_ea);
@@ -66,14 +66,14 @@ internal B4 x8616_parse_memory(Str8_R cur, X8616_DecodedOperand_R op)
 		op->flags = x8616_decoded_operand_memory;
 		op->ea    = C_(X8616_EA, ea);
 		x8616_parse_skip_ws(cur);
-		if (x8616_parse_eat(cur, slit8("+"))) {
+		if (x8616_parse_walk(cur, slit8("+"))) {
 			U2 mag = 0; B4 neg = 0;
 			x8616_parse_skip_ws(cur);
 			if (x8616_parse_number(cur, & mag, & neg) == 0) { ok = 0; goto exit; }
 			op->displacement       = neg ? s2_(-s4_(mag)) : s2_(mag);
 			op->displacement_bytes = (u2_(op->displacement) > 0x7F && op->displacement >= 0) || op->displacement < -128 ? 2 : (op->displacement ? 1 : 0);
 		}
-		else if (x8616_parse_eat(cur, slit8("-"))) {
+		else if (x8616_parse_walk(cur, slit8("-"))) {
 			U2 mag = 0; B4 dummy = 0;
 			x8616_parse_skip_ws(cur);
 			if (x8616_parse_number(cur, & mag, & dummy) == 0) { ok = 0; goto exit; }
@@ -89,7 +89,7 @@ internal B4 x8616_parse_memory(Str8_R cur, X8616_DecodedOperand_R op)
 		op->ea      = x8616_ea_direct;
 	}
 	x8616_parse_skip_ws(cur);
-	if (x8616_parse_eat(cur, slit8("]")) == 0) { ok = 0; goto exit; }
+	if (x8616_parse_walk(cur, slit8("]")) == 0) { ok = 0; goto exit; }
 exit:
 	return ok;
 }
@@ -100,9 +100,9 @@ x8616_parse_operand(Str8_R cur, X8616_DecodedInstruction_R inst, X8616_DecodedOp
 	B4 ok = 1;
 	x8616_parse_skip_ws(cur);
 	X8616_WidthMode size = x8616_width_dynamic;
-	if      (x8616_parse_eat(cur, slit8("byte "))) size         = x8616_width_byte;
-	else if (x8616_parse_eat(cur, slit8("word "))) size         = x8616_width_word;
-	if      (x8616_parse_eat(cur, slit8("far ")))  inst->flags |= x8616_encoding_far;
+	if      (x8616_parse_walk(cur, slit8("byte "))) size         = x8616_width_byte;
+	else if (x8616_parse_walk(cur, slit8("word "))) size         = x8616_width_word;
+	if      (x8616_parse_walk(cur, slit8("far ")))  inst->flags |= x8616_encoding_far;
 	x8616_parse_skip_ws(cur);
 
 	U4   seg_n = Array_len(x8616_serialize_seg);
@@ -111,7 +111,7 @@ x8616_parse_operand(Str8_R cur, X8616_DecodedInstruction_R inst, X8616_DecodedOp
 	if (seg < seg_n)
 	{
 		x8616_parse_skip_ws(cur);
-		if (x8616_parse_eat(cur, slit8(":"))) {
+		if (x8616_parse_walk(cur, slit8(":"))) {
 			inst->prefixes.has_segment = 1;
 			inst->prefixes.segment     = C_(X8616_Segment, seg);
 			x8616_parse_skip_ws(cur);
@@ -143,10 +143,10 @@ x8616_parse_operand(Str8_R cur, X8616_DecodedInstruction_R inst, X8616_DecodedOp
 				op->width   = x8616_width_byte;
 				op->reg.r8  = C_(X8616_Reg8, r8);
 			}
-			else if (x8616_parse_eat(cur, slit8("$"))) {
+			else if (x8616_parse_walk(cur, slit8("$"))) {
 				B4 neg = 0;
-				if (x8616_parse_eat(cur, slit8("+"))) {}
-				else if (x8616_parse_eat(cur, slit8("-"))) neg = 1;
+				if (x8616_parse_walk(cur, slit8("+"))) {}
+				else if (x8616_parse_walk(cur, slit8("-"))) neg = 1;
 				else { ok = 0; goto exit; }
 				U2 mag = 0; B4 extra = 0;
 				if (x8616_parse_number(cur, & mag, & extra) == 0) { ok = 0; goto exit; }
@@ -164,7 +164,7 @@ x8616_parse_operand(Str8_R cur, X8616_DecodedInstruction_R inst, X8616_DecodedOp
 				Str8 before = *cur;
 				if (x8616_parse_number(cur, & mag, & neg) == 0) { ok = 0; goto exit; }
 				x8616_parse_skip_ws(cur);
-				if (x8616_parse_eat(cur, slit8(":"))) {
+				if (x8616_parse_walk(cur, slit8(":"))) {
 					U2 off = 0; B4 off_neg = 0;
 					if (x8616_parse_number(cur, & off, & off_neg) == 0) { ok = 0; goto exit; }
 					op->flags       = x8616_decoded_operand_far_ptr;
@@ -195,18 +195,119 @@ exit:
 	return ok;
 }
 
+FI_ B4 x8616_parse_is_shift(X8616_Op op) { switch (op) {
+	case x8616_op_shl:
+	case x8616_op_shr:
+	case x8616_op_sar:
+	case x8616_op_rol:
+	case x8616_op_ror:
+	case x8616_op_rcl:
+	case x8616_op_rcr:
+		return 1;
+	default:
+		return 0;
+}}
+
+FI_ B4 x8616_parse_is_string(X8616_Op op) { switch (op) {
+	case x8616_op_movs:
+	case x8616_op_cmps:
+	case x8616_op_scas:
+	case x8616_op_lods:
+	case x8616_op_stos:
+		return 1;
+	default:
+		return 0;
+}}
+
+FI_ B4 x8616_parse_has_memory(X8616_DecodedInstruction_R inst) {
+	for (U1 id = 0; id < inst->operand_count; ++id) { if (inst->operands[id].flags & x8616_decoded_operand_memory) return 1; }
+	return 0;
+}
+
+FI_ X8616_DecodedOperandFlags x8616_parse_base_flags(X8616_DecodedOperandFlags flags) {
+	return flags & (
+		x8616_decoded_operand_register
+	|	x8616_decoded_operand_segment
+	|	x8616_decoded_operand_memory
+	|	x8616_decoded_operand_immediate
+	|	x8616_decoded_operand_relative
+	|	x8616_decoded_operand_far_ptr
+	);
+}
+
+FI_ B4 x8616_parse_one_flag(X8616_DecodedOperandFlags flags) { U2 bits = C_(U2, flags); return (bits != 0) && ((bits & (bits - 1)) == 0); }
+
+internal void
+x8616_parse_push(FArena_R arena, X8616_InfoList_R msgs, X8616_ParseStatus status, U4 id, U2 size, U4 expected, U4 actual) {
+	if (status == x8616_parse_ok || arena == 0) return;
+	X8616_InfoKind kind = x8616_info_error;
+	X8616_InfoCode code = x8616_info_parse_syntax;
+	if (status == x8616_parse_output_full)           code = x8616_info_parse_output_full;
+	else if (status == x8616_parse_unknown_mnemonic) code = x8616_info_parse_unknown_mnemonic;
+	else if (status == x8616_parse_invalid_record)   code = x8616_info_parse_invalid_record;
+	else if (status == x8616_parse_unsupported_form) code = x8616_info_parse_unsupported_form;
+	x8616_info_push(arena, msgs, kind, code, id, size, expected, actual);
+}
+
+internal X8616_ParseStatus
+x8616_parse_validate(X8616_DecodedInstruction_R inst)
+{
+	X8616_ParseStatus status = x8616_parse_ok;
+
+	B4 invalid_sig             = inst->operand_count > 2;
+	B4 invalid_mnemonic        = u4_(inst->op) >= Array_len(x8616_serialize_mnemonic) || inst->op == x8616_op_invalid;
+	B4 empty_mnemonic          = invalid_mnemonic == 0 && x8616_serialize_mnemonic[inst->op].len == 0;
+	B4 invalid_prefix_with_seg = inst->prefixes.has_segment && u1_(inst->prefixes.segment) >= Array_len(x8616_serialize_seg);
+
+	if (invalid_sig || invalid_mnemonic || invalid_prefix_with_seg) {
+		status = x8616_parse_invalid_record; goto status_failed;
+	}
+	if (empty_mnemonic) {
+		status = x8616_parse_unknown_mnemonic; goto status_failed;
+	}
+	B4 bad_prefix_segment = inst->prefixes.has_segment && (x8616_parse_has_memory(inst)    == 0);
+	B4 bad_prefix_repeat  = inst->prefixes.has_repeat  && (x8616_parse_is_string(inst->op) == 0);
+	if (bad_prefix_segment || bad_prefix_repeat) {
+		status = x8616_parse_unsupported_form; goto status_failed;
+	}
+
+	for (U1 id = 0; id < inst->operand_count; ++id)
+	{
+		X8616_DecodedOperand_R operand = & inst->operands[id];
+		X8616_DecodedOperandFlags base = x8616_parse_base_flags(operand->flags);
+		B4 invalid_flag         = x8616_parse_one_flag(base) == 0;
+		B4 has_operand_register = base & x8616_decoded_operand_register;
+		B4 has_operand_segment  = base & x8616_decoded_operand_segment;
+		B4 has_operand_memory   = base & x8616_decoded_operand_memory;
+		B4 invalid_reg_r16      = u1_(operand->reg.r16) >= Array_len(x8616_serialize_reg16);
+		B4 invalid_width        = operand->width != x8616_width_byte && operand->width != x8616_width_word;
+		B4 invalid_operand_seg  = u1_(operand->segment) >= Array_len(x8616_serialize_seg);
+		B4 invalid_operand_ea   = u1_(operand->ea)      >= Array_len(x8616_serialize_ea);
+		B4 invalid_direct_ea    = has_operand_memory && ((operand->flags & x8616_decoded_operand_direct) == 0) && invalid_operand_ea;
+		B4 invalid_operand      = invalid_flag
+			|| (has_operand_register && (invalid_reg_r16 || invalid_width))
+			|| (has_operand_segment  && invalid_operand_seg)
+			|| invalid_direct_ea;
+		if (invalid_operand) {
+			status = x8616_parse_invalid_record; goto status_failed;
+		}
+	}
+status_failed:
+	return status;
+}
+
 internal B4 x8616_parse_line(Str8 line, X8616_DecodedInstruction_R inst)
 {
 	B4 ok = 1;
 	x8616_parse_skip_ws(& line);
 	if (line.len == 0) { ok = 0; goto exit; }
 
-	if (x8616_parse_eat(& line, slit8("lock "))) inst->prefixes.lock = 1;
-	if (x8616_parse_eat(& line, slit8("repne "))) {
+	if (x8616_parse_walk(& line, slit8("lock "))) inst->prefixes.lock = 1;
+	if (x8616_parse_walk(& line, slit8("repne "))) {
 		inst->prefixes.has_repeat = 1;
 		inst->prefixes.repeat     = x8616_repne;
 	}
-	else if (x8616_parse_eat(& line, slit8("rep "))) {
+	else if (x8616_parse_walk(& line, slit8("rep "))) {
 		inst->prefixes.has_repeat = 1;
 		inst->prefixes.repeat     = x8616_rep;
 	}
@@ -216,10 +317,9 @@ internal B4 x8616_parse_line(Str8 line, X8616_DecodedInstruction_R inst)
 	if (mnem >= mnem_n) { ok = 0; goto exit; }
 	inst->op = C_(X8616_Op, mnem);
 
-	if (inst->op == x8616_op_movs || inst->op == x8616_op_cmps || inst->op == x8616_op_scas
-	 || inst->op == x8616_op_lods || inst->op == x8616_op_stos) {
-		if (x8616_parse_eat(& line, slit8("b"))) inst->width = x8616_width_byte;
-		else if (x8616_parse_eat(& line, slit8("w"))) inst->width = x8616_width_word;
+	if (x8616_parse_is_string(inst->op)) {
+		if (x8616_parse_walk(& line, slit8("b"))) inst->width = x8616_width_byte;
+		else if (x8616_parse_walk(& line, slit8("w"))) inst->width = x8616_width_word;
 	}
 
 	x8616_parse_skip_ws(& line);
@@ -228,14 +328,26 @@ internal B4 x8616_parse_line(Str8 line, X8616_DecodedInstruction_R inst)
 	if (x8616_parse_operand(& line, inst, inst->operands + 0) == 0) { ok = 0; goto exit; }
 	inst->operand_count = 1;
 	x8616_parse_skip_ws(& line);
-	if (x8616_parse_eat(& line, slit8(","))) {
+	if (x8616_parse_walk(& line, slit8(","))) {
 		if (x8616_parse_operand(& line, inst, inst->operands + 1) == 0) { ok = 0; goto exit; }
 		inst->operand_count = 2;
 	}
 	x8616_parse_skip_ws(& line);
 	if (inst->width == x8616_width_dynamic) {
-		if (inst->operand_count && inst->operands[0].width != x8616_width_dynamic)
-			inst->width = inst->operands[0].width;
+		for (U1 id = 0; id < inst->operand_count; ++id) {
+			if (inst->operands[id].width != x8616_width_dynamic) {
+				inst->width = inst->operands[id].width;
+				break;
+			}
+		}
+	}
+	if (inst->width != x8616_width_dynamic) {
+		for (U1 id = 0; id < inst->operand_count; ++id) {
+			X8616_DecodedOperand_R op = inst->operands + id;
+			B4 take = op->width == x8616_width_dynamic;
+			take |= (op->flags & x8616_decoded_operand_immediate) && (x8616_parse_is_shift(inst->op) == 0);
+			if (take) op->width = inst->width;
+		}
 	}
 	ok = line.len == 0;
 exit:
@@ -261,7 +373,7 @@ X8616_ParseInfo x8616_parse_instructions(X8616_ParseRequest request)
 	}
 
 	Str8 cur = request.source;
-	if (x8616_parse_eat(& cur, x8616_serialize_header)) {}
+	if (x8616_parse_walk(& cur, x8616_serialize_header)) {}
 
 	offset = u4_(request.source.len - cur.len);
 	while (cur.len)
@@ -280,15 +392,21 @@ X8616_ParseInfo x8616_parse_instructions(X8616_ParseRequest request)
 		if (line.len == 0) continue;
 
 		if (result.instruction_count == request.instruction_cap) {
-			x8616_info_push(request.info_arena, msgs, x8616_info_error
-				, x8616_info_parse_output_full, line_at, 0, request.instruction_cap, result.instruction_count);
+			x8616_parse_push(request.info_arena, msgs, x8616_parse_output_full
+				, line_at, 0, request.instruction_cap, result.instruction_count);
 			goto exit;
 		}
 
 		X8616_DecodedInstruction inst = {0};
 		if (x8616_parse_line(line, & inst) == 0) {
-			x8616_info_push(request.info_arena, msgs, x8616_info_error
-				, x8616_info_parse_syntax, line_at, u2_(line.len), 0, 0);
+			x8616_parse_push(request.info_arena, msgs, x8616_parse_syntax
+				, line_at, u2_(line.len), 0, 0);
+			continue;
+		}
+		X8616_ParseStatus st = x8616_parse_validate(& inst);
+		if (st != x8616_parse_ok) {
+			x8616_parse_push(request.info_arena, msgs, st
+				, line_at, inst.size, 0, u4_(inst.op));
 			continue;
 		}
 		request.out_instructions[result.instruction_count] = inst;

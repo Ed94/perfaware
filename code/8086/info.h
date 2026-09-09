@@ -35,6 +35,8 @@ typedef Enum_(U1, X8616_InfoCode) {
 	x8616_info_parse_syntax               = 0x10,
 	x8616_info_parse_unknown_mnemonic     = 0x11,
 	x8616_info_parse_output_full          = 0x12,
+	x8616_info_parse_invalid_record       = 0x13,
+	x8616_info_parse_unsupported_form     = 0x14,
 
 	x8616_info_count,
 };
@@ -74,6 +76,8 @@ RO_ global Str8 x8616_info_templates[x8616_info_count] = {
 	[x8616_info_parse_syntax]               = slit8("Parse syntax error at <offset>."),
 	[x8616_info_parse_unknown_mnemonic]     = slit8("Unknown mnemonic at <offset>."),
 	[x8616_info_parse_output_full]          = slit8("Parse output is full: capacity <expected>, produced <actual>."),
+	[x8616_info_parse_invalid_record]       = slit8("Parse record at <offset> is not a valid instruction (op <actual>)."),
+	[x8616_info_parse_unsupported_form]     = slit8("Parse record at <offset> has an unsupported form (op <actual>)."),
 };
 
 typedef Struct_(X8616_InfoList) {
