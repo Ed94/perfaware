@@ -44,6 +44,8 @@ typedef Struct_(X8616_DecodePlex) {
 	X8616_Sign          s;
 	X8616_VariableShift v;
 	X8616_Repeat        z;
+	X8616_ALU           alu;
+	X8616_Condition     cc;
 	X8616_DecodedReg    reg_opcode;
 	X8616_Segment       sr_opcode;
 
@@ -275,8 +277,16 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 		plex->mod      = C_(X8616_Mod,     x8616_modrm_mod(plex->mod_rm));
 		plex->reg.r16  = C_(X8616_Reg16,   x8616_modrm_reg(plex->mod_rm));
 		plex->rm       = C_(X8616_EA,      x8616_modrm_rm(plex->mod_rm));
-		plex->sr_modrm = C_(X8616_Segment, x8616_modrm_sr(plex->mod_rm));
+		plex->sr_modrm      = C_(X8616_Segment, x8616_modrm_sr(plex->mod_rm));
 		plex->body_at += 1;
+	}
+
+	if (plan->flags & x8616_plan_has_alu) {
+		if (plan->flags & x8616_plan_alu_modrm) plex->alu = C_(X8616_ALU, plex->reg.r16);
+		else plex->alu = C_(X8616_ALU, (plex->opcode >> plan->alu_shift) & x8616_field_mask(0, X8616_OPCODE_ALU_TTT_WIDTH));
+	}
+	if (plan->flags & x8616_plan_has_cc) {
+		plex->cc = C_(X8616_Condition, (plex->opcode >> plan->cc_shift) & x8616_field_mask(0, X8616_OPCODE_CC_WIDTH));
 	}
 
 	plex->displacement_at = plex->body_at;
@@ -412,6 +422,14 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	plex->instruction.operands[swap ^ 1] = source[plan->operands[1]];
 
 	plex->instruction.op            = plan->op;
+	if (plan->flags & x8616_plan_has_alu) {
+		plex->instruction.alu = plex->alu;
+		plex->instruction.op  = x8616_op_from_alu[plex->alu];
+	}
+	if (plan->flags & x8616_plan_has_cc) {
+		plex->instruction.cc = plex->cc;
+		plex->instruction.op = x8616_op_from_cc[plex->cc];
+	}
 	plex->instruction.flags         = plan->encoding_flags;
 	plex->instruction.decode_flags  = (plex->encoding_invalid ? x8616_decode_invalid : 0) | (plex->classification_truncated ? x8616_decode_truncated : 0);
 	plex->instruction.width         = plex->width;

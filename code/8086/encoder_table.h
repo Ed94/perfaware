@@ -36,7 +36,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 			.mask = X8616_OPCODE_W_PREFIX_MASK,
 		},
 		.mod_rm = {
-			.bits = 0b000 << X8616_MODRM_REG_SHIFT,
+			.bits = x8616_digit_0 << X8616_MODRM_REG_SHIFT,
 			.mask = X8616_MODRM_REG_MASK,
 		},
 		.fields = {
@@ -137,7 +137,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 			.mask = X8616_OPCODE_MASK,
 		},
 		.mod_rm = {
-			.bits = 0b000 << X8616_MODRM_REG_SHIFT,
+			.bits = x8616_digit_0 << X8616_MODRM_REG_SHIFT,
 			.mask = X8616_MODRM_REG_MASK,
 		},
 		.operands = { x8616_operand_rm },
@@ -317,339 +317,52 @@ RO_ global X8616_Encoding x8616_encodings[] =
 	},
 
 	// Arithmetic / logical----------------------------------------------------
+	// 00 ttt 0 d w  |  00 ttt 10 w  |  100000 s w /ttt
 
-	/* ADD r/m,reg: 000000 d w */ {
+	/* ALU r/m,reg: 00 ttt 0 d w */ {
 		.opcode = {
-			.bits = 0b000000 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
+			.bits = x8616_enc_alu_class(),
+			.mask = x8616_field_mask(X8616_OPCODE_ALU_CLASS_SHIFT, X8616_OPCODE_ALU_CLASS_WIDTH)
+			      | x8616_field_mask(X8616_OPCODE_ALU_BIT2_SHIFT, 1),
 		},
 		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
+			.alu = { X8616_OPCODE_ALU_TTT_SHIFT, X8616_OPCODE_ALU_TTT_WIDTH },
+			.d   = { X8616_OPCODE_DW_D_SHIFT, 1 },
+			.w   = { X8616_OPCODE_DW_W_SHIFT, 1 },
 		},
 		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_add,
+		.op = x8616_op_invalid,
 	},
 
-	/* ADD imm,r/m: 100000 s w /0 */ {
+
+	/* ALU acc,imm: 00 ttt 10 w */ {
+		.opcode = {
+			.bits = x8616_enc_alu_class() | (X8616_OPCODE_ALU_ACC_FORM << X8616_OPCODE_ALU_ACC_FORM_SHIFT),
+			.mask = x8616_field_mask(X8616_OPCODE_ALU_CLASS_SHIFT, X8616_OPCODE_ALU_CLASS_WIDTH)
+			      | x8616_field_mask(X8616_OPCODE_ALU_ACC_FORM_SHIFT, 2),
+		},
+		.fields = {
+			.alu = { X8616_OPCODE_ALU_TTT_SHIFT, X8616_OPCODE_ALU_TTT_WIDTH },
+			.w   = { X8616_OPCODE_W_W_SHIFT, 1 },
+		},
+		.operands = { x8616_operand_acc, x8616_operand_imm },
+		.op = x8616_op_invalid,
+	},
+
+	/* ALU imm,r/m: 100000 s w /ttt */ {
 		.opcode = {
 			.bits = x8616_opcode_alu_rm_i << X8616_OPCODE_SW_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_SW_PREFIX_MASK,
 		},
-		.mod_rm = {
-			.bits = x8616_add << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
 		.fields = {
-			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
+			.alu = { X8616_MODRM_REG_SHIFT, X8616_MODRM_REG_WIDTH },
+			.s   = { X8616_OPCODE_SW_S_SHIFT, 1 },
+			.w   = { X8616_OPCODE_SW_W_SHIFT, 1 },
 		},
 		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_add,
+		.op = x8616_op_invalid,
 	},
 
-	/* ADD accumulator,imm: 0000010 w */ {
-		.opcode = {
-			.bits = 0b0000010 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_add,
-	},
-
-	/* OR r/m,reg: 000010 d w */ {
-		.opcode = {
-			.bits = 0b000010 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_or,
-	},
-
-	/* OR imm,r/m: 1000000 w /1 */ {
-		.opcode = {
-			.bits = x8616_opcode_logic_rm_i << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_or << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_or,
-	},
-
-	/* OR accumulator,imm: 0000110 w */ {
-		.opcode = {
-			.bits = 0b0000110 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_or,
-	},
-
-	/* ADC r/m,reg: 000100 d w */ {
-		.opcode = {
-			.bits = 0b000100 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_adc,
-	},
-
-	/* ADC imm,r/m: 100000 s w /2 */ {
-		.opcode = {
-			.bits = x8616_opcode_alu_rm_i << X8616_OPCODE_SW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_SW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_adc << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_adc,
-	},
-
-	/* ADC accumulator,imm: 0001010 w */ {
-		.opcode = {
-			.bits = 0b0001010 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_adc,
-	},
-
-	/* SBB r/m,reg: 000110 d w */ {
-		.opcode = {
-			.bits = 0b000110 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_sbb,
-	},
-
-	/* SBB imm,r/m: 100000 s w /3 */ {
-		.opcode = {
-			.bits = x8616_opcode_alu_rm_i << X8616_OPCODE_SW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_SW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_sbb << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_sbb,
-	},
-
-	/* SBB accumulator,imm: 0001110 w */ {
-		.opcode = {
-			.bits = 0b0001110 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_sbb,
-	},
-
-	/* AND r/m,reg: 001000 d w */ {
-		.opcode = {
-			.bits = 0b001000 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_and,
-	},
-
-	/* AND imm,r/m: 1000000 w /4 */ {
-		.opcode = {
-			.bits = x8616_opcode_logic_rm_i << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_and << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_and,
-	},
-
-	/* AND accumulator,imm: 0010010 w */ {
-		.opcode = {
-			.bits = 0b0010010 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_and,
-	},
-
-	/* SUB r/m,reg: 001010 d w */ {
-		.opcode = {
-			.bits = 0b001010 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_sub,
-	},
-
-	/* SUB imm,r/m: 100000 s w /5 */ {
-		.opcode = {
-			.bits = x8616_opcode_alu_rm_i << X8616_OPCODE_SW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_SW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_sub << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_sub,
-	},
-
-	/* SUB accumulator,imm: 0010110 w */ {
-		.opcode = {
-			.bits = 0b0010110 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_sub,
-	},
-
-	/* XOR r/m,reg: 001100 d w */ {
-		.opcode = {
-			.bits = 0b001100 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_xor,
-	},
-
-	/* XOR imm,r/m: 1000000 w /6 */ {
-		.opcode = {
-			.bits = x8616_opcode_logic_rm_i << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_xor << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_xor,
-	},
-
-	/* XOR accumulator,imm: 0011010 w */ {
-		.opcode = {
-			.bits = 0b0011010 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_xor,
-	},
-
-	/* CMP r/m,reg: 001110 d w */ {
-		.opcode = {
-			.bits = 0b001110 << X8616_OPCODE_DW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_DW_PREFIX_MASK,
-		},
-		.fields = {
-			.d = { X8616_OPCODE_DW_D_SHIFT, 1 },
-			.w = { X8616_OPCODE_DW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_reg_modrm },
-		.op = x8616_op_cmp,
-	},
-
-	/* CMP imm,r/m: 100000 s w /7 */ {
-		.opcode = {
-			.bits = x8616_opcode_alu_rm_i << X8616_OPCODE_SW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_SW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_cmp << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_cmp,
-	},
-
-	/* CMP accumulator,imm: 0011110 w */ {
-		.opcode = {
-			.bits = 0b0011110 << X8616_OPCODE_W_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_W_PREFIX_MASK,
-		},
-		.fields = {
-			.w = { X8616_OPCODE_W_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_acc, x8616_operand_imm },
-		.op = x8616_op_cmp,
-	},
 
 	// INC / DEC / unary / adjust---------------------------------------------
 
@@ -1271,149 +984,18 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_retf,
 	},
 
-	/* JO rel8 */ {
+	/* Jcc rel8: 0111 cccc */ {
 		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_o),
-			.mask = X8616_OPCODE_MASK,
+			.bits = x8616_opcode_jcc << X8616_OPCODE_CC_PREFIX_SHIFT,
+			.mask = x8616_stem_mask(X8616_OPCODE_CC_PREFIX_SHIFT),
+		},
+		.fields = {
+			.cc = { X8616_OPCODE_CC_SHIFT, X8616_OPCODE_CC_WIDTH },
 		},
 		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jo,
+		.op = x8616_op_invalid,
 	},
 
-	/* JNO rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_no),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jno,
-	},
-
-	/* JB rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_b),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jb,
-	},
-
-	/* JNB rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_nb),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jnb,
-	},
-
-	/* JE rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_e),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_je,
-	},
-
-	/* JNE rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_ne),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jne,
-	},
-
-	/* JBE rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_be),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jbe,
-	},
-
-	/* JA rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_a),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_ja,
-	},
-
-	/* JS rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_s),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_js,
-	},
-
-	/* JNS rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_ns),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jns,
-	},
-
-	/* JP rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_p),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jp,
-	},
-
-	/* JNP rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_np),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jnp,
-	},
-
-	/* JL rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_l),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jl,
-	},
-
-	/* JNL rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_nl),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jnl,
-	},
-
-	/* JLE rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_le),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jle,
-	},
-
-	/* JG rel8 */ {
-		.opcode = {
-			.bits = x8616_enc_jcc(x8616_cc_g),
-			.mask = X8616_OPCODE_MASK,
-		},
-		.operands = { x8616_operand_rel8 },
-		.op = x8616_op_jg,
-	},
 
 	/* LOOPNZ rel8 */ {
 		.opcode = {

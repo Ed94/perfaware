@@ -71,6 +71,8 @@ typedef Struct_(X8616_DecodedInstruction) {
 	X8616_OpcodePrefix    opcode;
 	X8616_Direction       d;
 	X8616_Width           w;
+	X8616_ALU             alu;
+	X8616_Condition       cc;
 	B1 has_mod_rm;
 	U1 size;
 	U1 size_required;
@@ -89,6 +91,9 @@ typedef Enum_(U2, X8616_DecodePlanFlags) {
 	Bit_(x8616_plan_has_sr,          9),
 	Bit_(x8616_plan_uses_rm,        10),
 	Bit_(x8616_plan_is_prefix,      11),
+	Bit_(x8616_plan_has_alu,        12),
+	Bit_(x8616_plan_has_cc,         13),
+	Bit_(x8616_plan_alu_modrm,      14),
 };
 
 typedef Enum_(U1, X8616_DecodePayload) {
@@ -132,6 +137,9 @@ typedef Struct_(X8616_DecodePlan) {
 
 	X8616_BytePattern mod_rm;
 	X8616_BytePattern post_opcode;
+
+	U1 alu_shift;
+	U1 cc_shift;
 };
 
 enum {
