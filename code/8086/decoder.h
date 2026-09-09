@@ -12,25 +12,30 @@ enum {
 };
 
 typedef Enum_(U2, X8616_DecodedOperandFlags) {
-	x8616_decoded_operand_none          = 0b0000000000000000,
-	x8616_decoded_operand_register      = 0b0000000000000001,
-	x8616_decoded_operand_segment       = 0b0000000000000010,
-	x8616_decoded_operand_memory        = 0b0000000000000100,
-	x8616_decoded_operand_immediate     = 0b0000000000001000,
-	x8616_decoded_operand_relative      = 0b0000000000010000,
-	x8616_decoded_operand_far_ptr       = 0b0000000000100000,
-	x8616_decoded_operand_direct        = 0b0000000001000000,
-	x8616_decoded_operand_sign_extended = 0b0000000010000000,
-	x8616_decoded_operand_implicit      = 0b0000000100000000,
+	Bit_(x8616_decoded_operand_none,          0),
+	Bit_(x8616_decoded_operand_register,      1),
+	Bit_(x8616_decoded_operand_segment,       2),
+	Bit_(x8616_decoded_operand_memory,        3),
+	Bit_(x8616_decoded_operand_immediate,     4),
+	Bit_(x8616_decoded_operand_relative,      5),
+	Bit_(x8616_decoded_operand_far_ptr,       6),
+	Bit_(x8616_decoded_operand_direct,        7),
+	Bit_(x8616_decoded_operand_sign_extended, 8),
+	Bit_(x8616_decoded_operand_implicit,      9),
+};
+
+typedef Union_(X8616_DecodedReg) {
+	X8616_Reg8  r8;
+	X8616_Reg16 r16;
 };
 
 typedef Struct_(X8616_DecodedOperand) {
 	X8616_DecodedOperandFlags flags;
 	X8616_WidthMode           width;
-	U1 reg;
-	U1 segment;
-	U1 mod;
-	U1 ea;
+	X8616_DecodedReg          reg;
+	X8616_Segment             segment;
+	X8616_Mod                 mod;
+	X8616_EA                  ea;
 	S2 displacement;
 	U2 address;
 	U2 immediate;
@@ -64,26 +69,27 @@ typedef Struct_(X8616_DecodedInstruction) {
 	X8616_DecodedPrefixes prefixes;
 	X8616_DecodedOperand  operands[2];
 	U1 operand_count;
-	U1 opcode;
-	U1 mod_rm;
+	X8616_OpcodePrefix opcode;
+	X8616_Direction    d;
+	X8616_Width        w;
 	B1 has_mod_rm;
 	U1 size;
 	U1 size_required;
 };
 
 typedef Enum_(U2, X8616_DecodePlanFlags) {
-	x8616_plan_none            = 0b0000000000000000,
-	x8616_plan_has_modrm       = 0b0000000000000001,
-	x8616_plan_has_post_opcode = 0b0000000000000010,
-	x8616_plan_has_d           = 0b0000000000000100,
-	x8616_plan_has_w           = 0b0000000000001000,
-	x8616_plan_has_s           = 0b0000000000010000,
-	x8616_plan_has_v           = 0b0000000000100000,
-	x8616_plan_has_z           = 0b0000000001000000,
-	x8616_plan_has_reg         = 0b0000000010000000,
-	x8616_plan_has_sr          = 0b0000000100000000,
-	x8616_plan_uses_rm         = 0b0000001000000000,
-	x8616_plan_is_prefix       = 0b0000010000000000,
+	Bit_(x8616_plan_none,            0),
+	Bit_(x8616_plan_has_modrm,       1),
+	Bit_(x8616_plan_has_post_opcode, 2),
+	Bit_(x8616_plan_has_d,           3),
+	Bit_(x8616_plan_has_w,           4),
+	Bit_(x8616_plan_has_s,           5),
+	Bit_(x8616_plan_has_v,           6),
+	Bit_(x8616_plan_has_z,           7),
+	Bit_(x8616_plan_has_reg,         8),
+	Bit_(x8616_plan_has_sr,          9),
+	Bit_(x8616_plan_uses_rm,        10),
+	Bit_(x8616_plan_is_prefix,      11),
 };
 
 typedef Enum_(U1, X8616_DecodePayload) {

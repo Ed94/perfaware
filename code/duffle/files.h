@@ -13,7 +13,7 @@
 CLANG_OPTIMIZE_DISABLE
 
 // Most of this referenced from the RAD Debugger codebase.
-typedef Enum_(U4,AccessFlags) {
+typedef Enum_(U4, AccessFlags) {
   Bit_(AccessFlag_Read,       0),
   Bit_(AccessFlag_Write,      1),
   Bit_(AccessFlag_Execute,    2),

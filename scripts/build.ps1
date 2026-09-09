@@ -391,7 +391,7 @@ function build-8086_decoder_table {
 
     dump-disassembly $module_c $exe
 }
-build-8086_decoder_table
+# build-8086_decoder_table
 
 function build-part_1 {
     # The base lib uses subdir-prefixed includes (e.g. "duffle/dsl.h"),
@@ -418,4 +418,4 @@ function build-part_1 {
 
     dump-disassembly $module_c $exe
 }
-# build-part_1
+build-part_1

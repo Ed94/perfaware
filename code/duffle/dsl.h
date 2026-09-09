@@ -10,6 +10,7 @@ Standard: c23
 #pragma clang diagnostic ignored "-Wswitch"
 #pragma clang diagnostic ignored "-Wuninitialized"
 #pragma clang diagnostic ignored "-Wmicrosoft-enum-forward-reference"
+#pragma clang diagnostic ignored "-Wmicrosoft-fixed-enum"
 // #pragma comment(lib, "Advapi32.lib")
 // #pragma comment(lib, "gdi32.lib")
 // #pragma comment(lib, "Kernel32.lib")
@@ -122,7 +123,7 @@ Standard: c23
 #define Array_expand(type,len)         type Array_sym(type, len)[len]; typedef PtrSet_(Array_sym(type, len))
 #define Array_(type,len)               Array_expand(type,len)
 #define Bit_(id,b)                     id = (1 << b), tmpl(id,pos) = b
-#define Enum_(underlying_type, symbol) underlying_type TSet_(symbol); enum symbol 
+#define Enum_(underlying_type, symbol) enum symbol : underlying_type TSet_(symbol); enum symbol : underlying_type
 #define Proc_(symbol)                  symbol
 #define Relative_(symbol)              // Does nothing but annotate that a symbol is associated with another.
 #define Struct_(symbol)                struct symbol   TSet_(symbol); struct symbol
@@ -277,8 +278,8 @@ enum {
 	Bitmask_10 = 0x000003ff,
 };
 
-typedef Enum_(U4,WeekDay){ WeekDay_Sun, WeekDay_Mon, WeekDay_Tue, WeekDay_Wed, WeekDay_Thu, WeekDay_Fri, WeekDay_Sat, WeekDay_Num, };
-typedef Enum_(U4,Month)  { Month_Jan, Month_Feb, Month_Mar, Month_Apr, Month_May, Month_Jun, Month_Jul, Month_Aug, Month_Sep, Month_Oct, Month_Nov, Month_Dec, Month_Num, };
+typedef Enum_(U4, WeekDay) { WeekDay_Sun, WeekDay_Mon, WeekDay_Tue, WeekDay_Wed, WeekDay_Thu, WeekDay_Fri, WeekDay_Sat, WeekDay_Num, };
+typedef Enum_(U4, Month) { Month_Jan, Month_Feb, Month_Mar, Month_Apr, Month_May, Month_Jun, Month_Jul, Month_Aug, Month_Sep, Month_Oct, Month_Nov, Month_Dec, Month_Num, };
 
 typedef U8 DenseTime;
 

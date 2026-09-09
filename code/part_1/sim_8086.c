@@ -1,4 +1,5 @@
 #include "duffle/dsl.h"
+#include "duffle/asm.h"
 #include "duffle/analysis.h"
 #include "duffle/math.h"
 #include "duffle/memory.h"
@@ -9,6 +10,15 @@
 #include "duffle/files.h"
 
 #include "duffle/win32.h"
+
+#include "8086/encoder.h"
+#include "8086/encoder_table.h"
+#include "8086/info.h"
+#include "8086/info_render.h"
+#include "8086/decoder.h"
+#include "8086/gen/decoder_table.h"
+
+#include "8086/decoder.c"
 
 // #include "8086/decoder.h"
 
@@ -56,22 +66,23 @@ I_ Str8 binary_as_str8(Slice_U1 data, FArena* str8_mem) { Str8 result = {0};
 	jret: return result;
 }
 
-
-
 enum {
-	Scratchpad_Len = kilo(1),
+	Scratchpad_Len = kilo(16),
 	FileRam_Len    = kilo(16),
 };
 typedef Struct_(SMemory) {
 	U1 Scratchpad [Scratchpad_Len];
 	U1 FileRam    [FileRam_Len];
+
+	U1 decode_mem[kilo(64)];
 };
 global SMemory smem;
 
 #define path_course_content "./course_content/perfaware/"
 #define path_part1          path_course_content "part1/"
 
-CLANG_OPTIMIZE_DISABLE
+typedef Slice_(X8616_DecodedInstruction);
+
 int main()
 {
 	FArena scratch    = farena_make(slice_ut_arr(smem.Scratchpad));
@@ -80,8 +91,21 @@ int main()
 	Str8 path_listing_0037_single_register_mov     = slit8(path_part1 "listing_0037_single_register_mov");
 	Str8 path_listing_0037_single_register_mov_asm = slit8(path_part1 "listing_0037_single_register_mov.asm");
 	Slice_U1 data = data_from_file_path(& file_arena, path_listing_0037_single_register_mov, & scratch);
+	farena_reset(& scratch);
+
+	FArena decode_arena =	farena_make(slice_ut_arr(smem.decode_mem));
+	Slice_X8616_DecodedInstruction decoded = farena_push_array(& decode_arena, X8616_DecodedInstruction, data.len);
+
+	X8616_DecodeInfo info = x8616_decode_(
+		.source               = data.ptr,
+		.source_size          = data.len,
+		.instructions         = decoded.ptr,
+		.instruction_capacity = decoded.len,
+		.info_arena           = & decode_arena,
+	);
+	assert(info.instruction_count > 0);
+	// Str8 infO_report = x8616_info_render(slice_ut_arr(smem.Scratchpad), info.msgs.first,);
 
 	ms_exit_process(0);
 	return 0;
 }
-CLANG_OPTIMIZE_ENABLE

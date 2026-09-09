@@ -33,7 +33,7 @@ typedef Struct_(X8616_DecodePlex) {
 
 	U2 dispatch;
 	U1 plan_idx;
-	X8616_DecodePlan const* plan;
+	X8616_DecodePlan* plan;
 
 	U1 opcode;
 	U1 post_opcode;
@@ -80,6 +80,23 @@ typedef Struct_(X8616_DecodePlex) {
 
 FI_ U2 x8616_decode_u2(U1_R bytes) { return C_(U2, bytes[0] | u2_(bytes[1] << 8)); }
 
+internal X8616_OpcodePrefix
+x8616_decode_opcode(X8616_DecodePlan const* plan, U1 opcode)
+{
+	U1 field_mask = 0;
+	if (plan->flags & x8616_plan_has_d)   field_mask |= u1_(1u    << plan->d_shift);
+	if (plan->flags & x8616_plan_has_w)   field_mask |= u1_(1u    << plan->w_shift);
+	if (plan->flags & x8616_plan_has_s)   field_mask |= u1_(1u    << plan->s_shift);
+	if (plan->flags & x8616_plan_has_v)   field_mask |= u1_(1u    << plan->v_shift);
+	if (plan->flags & x8616_plan_has_z)   field_mask |= u1_(1u    << plan->z_shift);
+	if (plan->flags & x8616_plan_has_reg) field_mask |= u1_(0b111u << plan->reg_shift);
+	if (plan->flags & x8616_plan_has_sr)  field_mask |= u1_(0b11u  << plan->sr_shift);
+	if (field_mask == 0) return 0;
+	U1 stem_mask = u1_(~field_mask);
+	if (stem_mask == 0) return 0;
+	return C_(X8616_OpcodePrefix, (opcode & stem_mask) >> count_trailing_zeros_u4(stem_mask));
+}
+
 internal void
 x8616_decode_apply_prefix(X8616_DecodePlex_R plex, X8616_DecodePlan_R plan, U1 opcode) {
 	plex->prefixes.count += 1;
@@ -107,7 +124,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 		U2 prefix_dispatch = x8616_decode_dispatch[prefix_opcode];
 		if (prefix_dispatch == false || (prefix_dispatch & X8616_DECODE_AUX_BIT)) break;
 
-		X8616_DecodePlan const* prefix_plan = x8616_decode_plans + prefix_dispatch;
+		X8616_DecodePlan_R prefix_plan = x8616_decode_plans + prefix_dispatch;
 		if ((prefix_plan->flags & x8616_plan_is_prefix) == false) break;
 
 		x8616_decode_apply_prefix(plex, prefix_plan, prefix_opcode);
@@ -228,7 +245,6 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 		plex->instruction.prefixes      = plex->prefixes;
 		plex->instruction.op            = x8616_op_invalid;
 		plex->instruction.decode_flags  = (plex->encoding_invalid ? x8616_decode_invalid : 0) | (plex->classification_truncated ? x8616_decode_truncated : 0);
-		plex->instruction.opcode        = plex->opcode;
 		plex->instruction.size          = u1_(prefix_at + invalid_body_size);
 		plex->instruction.size_required = plex->instruction.size;
 		return plex->instruction.size;
@@ -303,39 +319,39 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 
 	X8616_DecodedOperand* source = plex->operand_source;
 
-	source[x8616_operand_reg_modrm].flags = x8616_decoded_operand_register;
-	source[x8616_operand_reg_modrm].width = plex->width;
-	source[x8616_operand_reg_modrm].reg   = plex->reg;
+	source[x8616_operand_reg_modrm].flags   = x8616_decoded_operand_register;
+	source[x8616_operand_reg_modrm].width   = plex->width;
+	source[x8616_operand_reg_modrm].reg.r16 = C_(X8616_Reg16, plex->reg);
 
-	source[x8616_operand_reg_opcode].flags = x8616_decoded_operand_register;
-	source[x8616_operand_reg_opcode].width = plex->width;
-	source[x8616_operand_reg_opcode].reg   = plex->reg_opcode;
+	source[x8616_operand_reg_opcode].flags   = x8616_decoded_operand_register;
+	source[x8616_operand_reg_opcode].width   = plex->width;
+	source[x8616_operand_reg_opcode].reg.r16 = C_(X8616_Reg16, plex->reg_opcode);
 
 	source[x8616_operand_segment_modrm].flags   = x8616_decoded_operand_segment;
 	source[x8616_operand_segment_modrm].width   = x8616_width_word;
-	source[x8616_operand_segment_modrm].segment = plex->sr_modrm;
+	source[x8616_operand_segment_modrm].segment = C_(X8616_Segment, plex->sr_modrm);
 
 	source[x8616_operand_segment_opcode].flags   = x8616_decoded_operand_segment;
 	source[x8616_operand_segment_opcode].width   = x8616_width_word;
-	source[x8616_operand_segment_opcode].segment = plex->sr_opcode;
+	source[x8616_operand_segment_opcode].segment = C_(X8616_Segment, plex->sr_opcode);
 
-	source[x8616_operand_acc].flags = x8616_decoded_operand_register | x8616_decoded_operand_implicit;
-	source[x8616_operand_acc].width = plex->width;
-	source[x8616_operand_acc].reg   = 0;
+	source[x8616_operand_acc].flags   = x8616_decoded_operand_register | x8616_decoded_operand_implicit;
+	source[x8616_operand_acc].width   = plex->width;
+	source[x8616_operand_acc].reg.r16 = x8616_ax;
 
-	source[x8616_operand_dx].flags = x8616_decoded_operand_register | x8616_decoded_operand_implicit;
-	source[x8616_operand_dx].width = x8616_width_word;
-	source[x8616_operand_dx].reg   = x8616_dx;
+	source[x8616_operand_dx].flags   = x8616_decoded_operand_register | x8616_decoded_operand_implicit;
+	source[x8616_operand_dx].width   = x8616_width_word;
+	source[x8616_operand_dx].reg.r16 = x8616_dx;
 
 	source[x8616_operand_rm].width = plex->width;
 	if (plex->mod == x8616_mod_reg) {
-		source[x8616_operand_rm].flags = x8616_decoded_operand_register;
-		source[x8616_operand_rm].reg   = plex->rm;
+		source[x8616_operand_rm].flags   = x8616_decoded_operand_register;
+		source[x8616_operand_rm].reg.r16 = C_(X8616_Reg16, plex->rm);
 	}
 	else {
 		source[x8616_operand_rm].flags              = x8616_decoded_operand_memory;
-		source[x8616_operand_rm].mod                = plex->mod;
-		source[x8616_operand_rm].ea                 = plex->rm;
+		source[x8616_operand_rm].mod                = C_(X8616_Mod, plex->mod);
+		source[x8616_operand_rm].ea                 = C_(X8616_EA,  plex->rm);
 		source[x8616_operand_rm].displacement       = plex->displacement;
 		source[x8616_operand_rm].displacement_bytes = plex->displacement_bytes;
 		if (plex->direct_memory) {
@@ -382,7 +398,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	source[x8616_operand_shift_count].width = x8616_width_byte;
 	if (plex->v == x8616_v_cl) {
 		source[x8616_operand_shift_count].flags |= x8616_decoded_operand_register;
-		source[x8616_operand_shift_count].reg    = x8616_cl;
+		source[x8616_operand_shift_count].reg.r8 = x8616_cl;
 	}
 	else {
 		source[x8616_operand_shift_count].flags          |= x8616_decoded_operand_immediate;
@@ -400,10 +416,11 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	plex->instruction.decode_flags  = (plex->encoding_invalid ? x8616_decode_invalid : 0) | (plex->classification_truncated ? x8616_decode_truncated : 0);
 	plex->instruction.width         = plex->width;
 	plex->instruction.prefixes      = plex->prefixes;
-	plex->instruction.operand_count = plan->operand_count;
-	plex->instruction.opcode        = plex->opcode;
-	plex->instruction.mod_rm        = plex->mod_rm;
-	plex->instruction.has_mod_rm    = (plan->flags & x8616_plan_has_modrm) != 0;
+	plex->instruction.operand_count  = plan->operand_count;
+	plex->instruction.opcode         = x8616_decode_opcode(plan, plex->opcode);
+	plex->instruction.d              = C_(X8616_Direction, (plan->flags & x8616_plan_has_d) ? plex->d : 0);
+	plex->instruction.w              = C_(X8616_Width,     (plan->flags & x8616_plan_has_w) ? plex->w : 0);
+	plex->instruction.has_mod_rm     = (plan->flags & x8616_plan_has_modrm) != 0;
 
 	U4 total_required  = prefix_at + plex->body_required;
 	U4 total_available = plex->source_size;
@@ -414,6 +431,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	return total_consumed;
 }
 
+#define x8616_decode_(...) x8616_decode((X8616_DecodeRequest){__VA_ARGS__})
 X8616_DecodeInfo x8616_decode(X8616_DecodeRequest request)
 {
 	X8616_DecodeInfo result = {0};
