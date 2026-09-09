@@ -68,7 +68,7 @@ typedef Struct_(X8616_DecodedInstruction) {
 	X8616_WidthMode       width;
 	X8616_DecodedPrefixes prefixes;
 	X8616_DecodedOperand  operands[2]; U1 operand_count;
-	X8616_OpcodePrefix    opcode;
+	X8616_Opcode          opcode;
 	X8616_Direction       d;
 	X8616_Width           w;
 	X8616_ALU             alu;

@@ -35,7 +35,7 @@ typedef Struct_(X8616_DecodePlex) {
 	U1 plan_idx;
 	X8616_DecodePlan* plan;
 
-	U1 opcode;
+	U1 header;
 	U1 post_opcode;
 	U1 mod_rm;
 
@@ -82,8 +82,8 @@ typedef Struct_(X8616_DecodePlex) {
 
 FI_ U2 x8616_decode_u2(U1_R bytes) { return C_(U2, bytes[0] | u2_(bytes[1] << 8)); }
 
-internal X8616_OpcodePrefix
-x8616_decode_opcode(X8616_DecodePlan const* plan, U1 opcode)
+internal X8616_Opcode
+x8616_decode_opcode(X8616_DecodePlan const* plan, U1 header)
 {
 	U1 field_mask = 0;
 	if (plan->flags & x8616_plan_has_d)    field_mask |= x8616_field_mask(plan->d_shift,    X8616_OPCODE_BIT_WIDTH);
@@ -97,9 +97,9 @@ x8616_decode_opcode(X8616_DecodePlan const* plan, U1 opcode)
 	if (plan->flags & x8616_plan_has_cc)   field_mask |= x8616_field_mask(plan->cc_shift,   X8616_OPCODE_CC_WIDTH);
 	if (plan->flags & x8616_plan_has_pair) field_mask |= x8616_field_mask(plan->pair_shift, X8616_OPCODE_PAIR_WIDTH);
 	if (field_mask == 0) return 0;
-	U1 stem_mask = u1_(~field_mask);
-	if (stem_mask == 0) return 0;
-	return C_(X8616_OpcodePrefix, (opcode & stem_mask) >> count_trailing_zeros_u4(stem_mask));
+	U1 opcode_mask = u1_(~field_mask);
+	if (opcode_mask == 0) return 0;
+	return C_(X8616_Opcode, (header & opcode_mask) >> count_trailing_zeros_u4(opcode_mask));
 }
 
 internal void
@@ -141,8 +141,8 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 
 	for (U1 idx = 0; idx < plex->body_available; ++ idx) plex->body[idx] = plex->source[prefix_at + idx];
 
-	plex->opcode   = plex->body[0];
-	plex->dispatch = x8616_decode_dispatch[plex->opcode];
+	plex->header   = plex->body[0];
+	plex->dispatch = x8616_decode_dispatch[plex->header];
 
 	if (body_source_size == 0) {
 		plex->classification_truncated = 1;
@@ -192,7 +192,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 				, plex->source_offset + prefix_at
 				, 1
 				, 0
-				, plex->opcode
+				, plex->header
 			);
 		}
 	}
@@ -256,13 +256,13 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	}
 
 	X8616_DecodePlan_R plan = plex->plan;
-	plex->d              = C_(X8616_Direction,     x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->d_shift,   X8616_OPCODE_BIT_WIDTH }));
-	plex->w              = C_(X8616_Width,         x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->w_shift,   X8616_OPCODE_BIT_WIDTH }));
-	plex->s              = C_(X8616_Sign,          x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->s_shift,   X8616_OPCODE_BIT_WIDTH }));
-	plex->v              = C_(X8616_VariableShift, x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->v_shift,   X8616_OPCODE_BIT_WIDTH }));
-	plex->z              = C_(X8616_Repeat,        x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->z_shift,   X8616_OPCODE_BIT_WIDTH }));
-	plex->reg_opcode.r16 = C_(X8616_Reg16,         x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->reg_shift, X8616_OPCODE_REG_REG_WIDTH }));
-	plex->sr_opcode      = C_(X8616_Segment,       x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->sr_shift,  X8616_OPCODE_SR_WIDTH }));
+	plex->d              = C_(X8616_Direction,     x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->d_shift,   X8616_OPCODE_BIT_WIDTH }));
+	plex->w              = C_(X8616_Width,         x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->w_shift,   X8616_OPCODE_BIT_WIDTH }));
+	plex->s              = C_(X8616_Sign,          x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->s_shift,   X8616_OPCODE_BIT_WIDTH }));
+	plex->v              = C_(X8616_VariableShift, x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->v_shift,   X8616_OPCODE_BIT_WIDTH }));
+	plex->z              = C_(X8616_Repeat,        x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->z_shift,   X8616_OPCODE_BIT_WIDTH }));
+	plex->reg_opcode.r16 = C_(X8616_Reg16,         x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->reg_shift, X8616_OPCODE_REG_REG_WIDTH }));
+	plex->sr_opcode      = C_(X8616_Segment,       x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->sr_shift,  X8616_OPCODE_SR_WIDTH }));
 
 	plex->width = plan->width;
 	if (plex->width == x8616_width_dynamic && (plan->flags & x8616_plan_has_w))
@@ -285,10 +285,10 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	}
 
 	if (plan->flags & x8616_plan_has_alu) {
-		plex->alu = C_(X8616_ALU, x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->alu_shift, X8616_OPCODE_ALU_TTT_WIDTH }));
+		plex->alu = C_(X8616_ALU, x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->alu_shift, X8616_OPCODE_ALU_TTT_WIDTH }));
 	}
 	if (plan->flags & x8616_plan_has_cc) {
-		plex->cc = C_(X8616_Condition, x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->cc_shift, X8616_OPCODE_CC_WIDTH }));
+		plex->cc = C_(X8616_Condition, x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->cc_shift, X8616_OPCODE_CC_WIDTH }));
 	}
 
 	plex->displacement_at = plex->body_at;
@@ -445,7 +445,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 		else if (plan->digit_kind == x8616_digit_incdec) plex->instruction.op = x8616_op_from_incdec[digit];
 	}
 	if (plan->flags & x8616_plan_has_pair) {
-		U1 bit = x8616_bit_field_extract(plex->opcode, (X8616_BitField){ plan->pair_shift, X8616_OPCODE_PAIR_WIDTH });
+		U1 bit = x8616_bit_field_extract(plex->header, (X8616_BitField){ plan->pair_shift, X8616_OPCODE_PAIR_WIDTH });
 		if (plan->pair_kind == x8616_pair_incdec)  plex->instruction.op = x8616_op_from_incdec[bit];
 		if (plan->pair_kind == x8616_pair_pushpop) plex->instruction.op = x8616_op_from_pushpop[bit];
 	}
@@ -454,7 +454,7 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	plex->instruction.width         = plex->width;
 	plex->instruction.prefixes      = plex->prefixes;
 	plex->instruction.operand_count = plan->operand_count;
-	plex->instruction.opcode        = x8616_decode_opcode(plan, plex->opcode);
+	plex->instruction.opcode        = x8616_decode_opcode(plan, plex->header);
 	plex->instruction.d             = (plan->flags & x8616_plan_has_d) ? plex->d : x8616_d_rm_dst;
 	plex->instruction.w             = (plan->flags & x8616_plan_has_w) ? plex->w : x8616_w_byte;
 	plex->instruction.has_mod_rm    = (plan->flags & x8616_plan_has_modrm) != 0;

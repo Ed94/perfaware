@@ -146,7 +146,7 @@ x8616_decode_gen_plan(X8616_Encoding_R encoding, U4 encoding_idx, X8616_InfoList
 }
 
 FI_ B4 x8616_decode_gen_encoding_matches_opcode(X8616_Encoding_R encoding, U1 opcode) {
-	return (opcode & encoding->opcode.mask) == encoding->opcode.bits;
+	return (opcode & encoding->header.mask) == encoding->header.bits;
 }
 
 FI_ B4 x8616_decode_gen_plan_matches_second(X8616_DecodePlan_R plan, U1 byte) {
