@@ -105,17 +105,19 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_push,
 	},
 
-	/* PUSH reg16: 01010 reg */ {
+	/* PUSH/POP reg16: 0101 pair reg */ {
 		.opcode = {
-			.bits = x8616_opcode_push_reg << X8616_OPCODE_REG_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_REG_PREFIX_MASK,
+			.bits = 0b0101 << 4,
+			.mask = x8616_stem_mask(4),
 		},
 		.fields = {
-			.reg = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
+			.pair = { X8616_OPCODE_PAIR_SHIFT, X8616_OPCODE_PAIR_WIDTH },
+			.reg  = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
 		},
-		.operands = { x8616_operand_reg_opcode },
-		.width = x8616_width_word,
-		.op = x8616_op_push,
+		.operands  = { x8616_operand_reg_opcode },
+		.width     = x8616_width_word,
+		.pair_kind = x8616_pair_pushpop,
+		.op        = x8616_op_invalid,
 	},
 
 	/* PUSH segment: 000 sr 110 */ {
@@ -145,18 +147,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_pop,
 	},
 
-	/* POP reg16: 01011 reg */ {
-		.opcode = {
-			.bits = x8616_opcode_pop_reg << X8616_OPCODE_REG_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_REG_PREFIX_MASK,
-		},
-		.fields = {
-			.reg = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
-		},
-		.operands = { x8616_operand_reg_opcode },
-		.width = x8616_width_word,
-		.op = x8616_op_pop,
-	},
+
 
 	/* POP segment: 000 sr 111 */ {
 		.opcode = {
@@ -198,9 +189,9 @@ RO_ global X8616_Encoding x8616_encodings[] =
 
 	// I/O / address / flags---------------------------------------------------
 
-	/* IN acc,imm8: 1110010 w */ {
+	/* IN acc,imm8: 1110 0 10 w */ {
 		.opcode = {
-			.bits = x8616_opcode_in_i << X8616_OPCODE_W_PREFIX_SHIFT,
+			.bits = x8616_enc_io_stem(0, 0) << X8616_OPCODE_W_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_W_PREFIX_MASK,
 		},
 		.fields = {
@@ -210,9 +201,9 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_in,
 	},
 
-	/* IN acc,DX: 1110110 w */ {
+	/* IN acc,DX: 1110 1 10 w */ {
 		.opcode = {
-			.bits = x8616_opcode_in_dx << X8616_OPCODE_W_PREFIX_SHIFT,
+			.bits = x8616_enc_io_stem(1, 0) << X8616_OPCODE_W_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_W_PREFIX_MASK,
 		},
 		.fields = {
@@ -222,9 +213,9 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_in,
 	},
 
-	/* OUT imm8,acc: 1110011 w */ {
+	/* OUT imm8,acc: 1110 0 11 w */ {
 		.opcode = {
-			.bits = x8616_opcode_out_i << X8616_OPCODE_W_PREFIX_SHIFT,
+			.bits = x8616_enc_io_stem(0, 1) << X8616_OPCODE_W_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_W_PREFIX_MASK,
 		},
 		.fields = {
@@ -234,9 +225,9 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_out,
 	},
 
-	/* OUT DX,acc: 1110111 w */ {
+	/* OUT DX,acc: 1110 1 11 w */ {
 		.opcode = {
-			.bits = x8616_opcode_out_dx << X8616_OPCODE_W_PREFIX_SHIFT,
+			.bits = x8616_enc_io_stem(1, 1) << X8616_OPCODE_W_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_W_PREFIX_MASK,
 		},
 		.fields = {
@@ -355,12 +346,12 @@ RO_ global X8616_Encoding x8616_encodings[] =
 			.mask = X8616_OPCODE_SW_PREFIX_MASK,
 		},
 		.fields = {
-			.alu = { X8616_MODRM_REG_SHIFT, X8616_MODRM_REG_WIDTH },
-			.s   = { X8616_OPCODE_SW_S_SHIFT, 1 },
-			.w   = { X8616_OPCODE_SW_W_SHIFT, 1 },
+			.s = { X8616_OPCODE_SW_S_SHIFT, 1 },
+			.w = { X8616_OPCODE_SW_W_SHIFT, 1 },
 		},
-		.operands = { x8616_operand_rm, x8616_operand_imm },
-		.op = x8616_op_invalid,
+		.operands   = { x8616_operand_rm, x8616_operand_imm },
+		.digit_kind = x8616_digit_alu,
+		.op         = x8616_op_invalid,
 	},
 
 
@@ -382,17 +373,19 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_inc,
 	},
 
-	/* INC reg16: 01000 reg */ {
+	/* INC/DEC reg16: 0100 pair reg */ {
 		.opcode = {
-			.bits = x8616_opcode_inc_reg << X8616_OPCODE_REG_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_REG_PREFIX_MASK,
+			.bits = 0b0100 << 4,
+			.mask = x8616_stem_mask(4),
 		},
 		.fields = {
-			.reg = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
+			.pair = { X8616_OPCODE_PAIR_SHIFT, X8616_OPCODE_PAIR_WIDTH },
+			.reg  = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
 		},
-		.operands = { x8616_operand_reg_opcode },
-		.width = x8616_width_word,
-		.op = x8616_op_inc,
+		.operands  = { x8616_operand_reg_opcode },
+		.width     = x8616_width_word,
+		.pair_kind = x8616_pair_incdec,
+		.op        = x8616_op_invalid,
 	},
 
 	/* AAA */ {
@@ -427,18 +420,7 @@ RO_ global X8616_Encoding x8616_encodings[] =
 		.op = x8616_op_dec,
 	},
 
-	/* DEC reg16: 01001 reg */ {
-		.opcode = {
-			.bits = x8616_opcode_dec_reg << X8616_OPCODE_REG_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_REG_PREFIX_MASK,
-		},
-		.fields = {
-			.reg = { X8616_OPCODE_REG_REG_SHIFT, X8616_OPCODE_REG_REG_WIDTH },
-		},
-		.operands = { x8616_operand_reg_opcode },
-		.width = x8616_width_word,
-		.op = x8616_op_dec,
-	},
+
 
 	/* NEG r/m: 1111011 w /neg */ {
 		.opcode = {
@@ -594,124 +576,20 @@ RO_ global X8616_Encoding x8616_encodings[] =
 
 	// Shift / rotate / TEST---------------------------------------------------
 
-	/* ROL r/m,1|CL: 110100 v w */ {
+	/* SHIFT/ROTATE r/m,1|CL: 110100 v w /ttt */ {
 		.opcode = {
 			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
 			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_rol << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
 		},
 		.fields = {
 			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
 			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
 		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_rol,
+		.operands   = { x8616_operand_rm, x8616_operand_shift_count },
+		.digit_kind = x8616_digit_shift,
+		.op         = x8616_op_invalid,
 	},
 
-	/* ROR r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_ror << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_ror,
-	},
-
-	/* RCL r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_rcl << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_rcl,
-	},
-
-	/* RCR r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_rcr << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_rcr,
-	},
-
-	/* SHL r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_shl << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_shl,
-	},
-
-	/* SHR r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_shr << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_shr,
-	},
-
-	/* SAR r/m,1|CL: 110100 v w */ {
-		.opcode = {
-			.bits = x8616_opcode_shift_rm << X8616_OPCODE_VW_PREFIX_SHIFT,
-			.mask = X8616_OPCODE_VW_PREFIX_MASK,
-		},
-		.mod_rm = {
-			.bits = x8616_sar << X8616_MODRM_REG_SHIFT,
-			.mask = X8616_MODRM_REG_MASK,
-		},
-		.fields = {
-			.v = { X8616_OPCODE_VW_V_SHIFT, 1 },
-			.w = { X8616_OPCODE_VW_W_SHIFT, 1 },
-		},
-		.operands = { x8616_operand_rm, x8616_operand_shift_count },
-		.op = x8616_op_sar,
-	},
 
 	/* TEST r/m,reg: 1000010 w */ {
 		.opcode = {

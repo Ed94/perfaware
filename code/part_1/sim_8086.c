@@ -121,8 +121,6 @@ int main()
 		ms_exit_process(13);
 		return 13;
 	}
-	Str8 listing_text = text.text;
-	(void)listing_text;
 
 	ms_exit_process(0);
 	return 0;

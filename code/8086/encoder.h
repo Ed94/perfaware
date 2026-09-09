@@ -16,6 +16,7 @@ typedef Struct_(X8616_OpcodeFields) {
 	X8616_BitField sr;
 	X8616_BitField alu;
 	X8616_BitField cc;
+	X8616_BitField pair;
 };
 
 #define x8616_field_mask(shift, width) u1_(((1u << (width)) - 1u) << (shift))
@@ -148,6 +149,21 @@ typedef Enum_(U1, X8616_EncodingFlags) {
 	x8616_encoding_prefix = 0b00000010,
 };
 
+typedef Enum_(U1, X8616_DigitKind) {
+	x8616_digit_none   = 0x0,
+	x8616_digit_alu    = 0x1,
+	x8616_digit_shift  = 0x2,
+	x8616_digit_g3     = 0x3,
+	x8616_digit_ff     = 0x4,
+	x8616_digit_incdec = 0x5,
+};
+
+typedef Enum_(U1, X8616_PairKind) {
+	x8616_pair_none    = 0x0,
+	x8616_pair_incdec  = 0x1,
+	x8616_pair_pushpop = 0x2,
+};
+
 /* mod_rm (Optional): Fixed constraint on the ModR/M byte.
     post_opcode (Optional): Fixed byte immediately following the opcode.
     fields: Variable fields carried by the opcode byte. width == 0: field is absent.
@@ -163,6 +179,8 @@ typedef Struct_(X8616_Encoding) {
 	X8616_Operand       operands[2];
 	X8616_WidthMode     width;
 	X8616_EncodingFlags flags;
+	X8616_DigitKind     digit_kind;
+	X8616_PairKind      pair_kind;
 	X8616_Op            op;
 };
 
@@ -295,6 +313,49 @@ typedef Enum_(U1, X8616_Shift) {
 	x8616_shl = 0b100,
 	x8616_shr = 0b101,
 	x8616_sar = 0b111,
+};
+
+RO_ global X8616_Op x8616_op_from_shift[] = {
+	[x8616_rol] = x8616_op_rol,
+	[x8616_ror] = x8616_op_ror,
+	[x8616_rcl] = x8616_op_rcl,
+	[x8616_rcr] = x8616_op_rcr,
+	[x8616_shl] = x8616_op_shl,
+	[x8616_shr] = x8616_op_shr,
+	[0b110]     = x8616_op_invalid,
+	[x8616_sar] = x8616_op_sar,
+};
+
+RO_ global X8616_Op x8616_op_from_g3[] = {
+	[x8616_g3_test] = x8616_op_test,
+	[0b001]         = x8616_op_invalid,
+	[x8616_g3_not]  = x8616_op_not,
+	[x8616_g3_neg]  = x8616_op_neg,
+	[x8616_g3_mul]  = x8616_op_mul,
+	[x8616_g3_imul] = x8616_op_imul,
+	[x8616_g3_div]  = x8616_op_div,
+	[x8616_g3_idiv] = x8616_op_idiv,
+};
+
+RO_ global X8616_Op x8616_op_from_ff[] = {
+	[0b000]              = x8616_op_invalid,
+	[0b001]              = x8616_op_invalid,
+	[x8616_ff_call_near] = x8616_op_call,
+	[x8616_ff_call_far]  = x8616_op_call,
+	[x8616_ff_jmp_near]  = x8616_op_jmp,
+	[x8616_ff_jmp_far]   = x8616_op_jmp,
+	[x8616_ff_push]      = x8616_op_push,
+	[0b111]              = x8616_op_invalid,
+};
+
+RO_ global X8616_Op x8616_op_from_incdec[] = {
+	[x8616_inc] = x8616_op_inc,
+	[x8616_dec] = x8616_op_dec,
+};
+
+RO_ global X8616_Op x8616_op_from_pushpop[] = {
+	[0] = x8616_op_push,
+	[1] = x8616_op_pop,
 };
 
 typedef Enum_(U1, X8616_Condition) {
@@ -431,7 +492,8 @@ typedef Enum_(U1, X8616_Opcode) {
 };
 
 enum {
-	X8616_OPCODE_MASK = x8616_field_mask(0, 8),
+	X8616_OPCODE_BIT_WIDTH = 1,
+	X8616_OPCODE_MASK      = x8616_field_mask(0, 8),
 
 	X8616_POST_OPCODE_AAM_AAD = 0b00001010,
 
@@ -545,6 +607,11 @@ enum {
 	X8616_OPCODE_ALU_BIT2_SHIFT  = 2,
 	X8616_OPCODE_ALU_ACC_FORM    = 0b10,
 	X8616_OPCODE_ALU_ACC_FORM_SHIFT = 1,
+
+	X8616_OPCODE_PAIR_SHIFT = 3,
+	X8616_OPCODE_PAIR_WIDTH = 1,
+	X8616_OPCODE_IO_CLASS   = 0b1110,
+	X8616_OPCODE_IO_CLASS_SHIFT = 4,
 };
 
 // ============================================================================
@@ -616,6 +683,9 @@ FI_ U1 x8616_modrm_sr            (U1 modrm)                           { return (
 #define x8616_enc_alu_op(alu)              x8616_enc_alu_ttt(alu)
 #define x8616_enc_alu_rm_r(ttt,d,w)        C_(U1, x8616_enc_alu_class() | x8616_enc_alu_ttt(ttt) | (0 << X8616_OPCODE_ALU_BIT2_SHIFT) | x8616_enc_d(d) | x8616_enc_width(w))
 #define x8616_enc_alu_acc_i(ttt,w)         C_(U1, x8616_enc_alu_class() | x8616_enc_alu_ttt(ttt) | (X8616_OPCODE_ALU_ACC_FORM << X8616_OPCODE_ALU_ACC_FORM_SHIFT) | x8616_enc_width(w))
+#define x8616_enc_io_stem(dx, out)         ((X8616_OPCODE_IO_CLASS << 3) | ((dx) << 2) | 0b10 | (out))
+#define x8616_enc_io(dx, out, w)           C_(U1, (x8616_enc_io_stem(dx, out) << X8616_OPCODE_W_PREFIX_SHIFT) | x8616_enc_width(w))
+#define x8616_enc_pair(bit)                ((bit) << X8616_OPCODE_PAIR_SHIFT)
 
 // Scalar / generic packets
 

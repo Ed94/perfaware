@@ -180,14 +180,8 @@ internal B4 x8616_serialize_put_s4(Str8Gen_R gen, S4 value) {
 }
 
 internal S4 x8616_serialize_s4_from_bits(U2 bits, U1 byte_count) {
-	if (byte_count <= 1) {
-		U4  value = bits & 0xFF;
-		if (value & 0x80) return C_(S4, value) - 256;
-		return C_(S4, value);
-	}
-	U4  value = bits;
-	if (value & 0x8000) return C_(S4, value) - 65536;
-	return C_(S4, value);
+	if (byte_count <= 1) return s4_(s1_(u1_(bits)));
+	return s4_(s2_(bits));
 }
 
 FI_ B4 x8616_serialize_imm_is_signed(X8616_Op op) { switch (op) {
@@ -237,7 +231,7 @@ x8616_serialize_size_where(X8616_Op op, U1 operand_count, X8616_DecodedOperand o
 	B4 has_imm = 0;
 	for (U1 id = 0; id < operand_count; ++id) {
 		X8616_DecodedOperandFlags flags = operands[id].flags;
-		if (flags & x8616_decoded_operand_memory) has_mem = 1;
+		if  (flags & x8616_decoded_operand_memory) has_mem = 1;
 		if ((flags & x8616_decoded_operand_immediate) && ((flags & x8616_decoded_operand_register) == 0)) has_imm = 1;
 	}
 	switch (op) {

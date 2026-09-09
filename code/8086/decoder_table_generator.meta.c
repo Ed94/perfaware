@@ -97,13 +97,11 @@ x8616_decode_gen_plan(X8616_Encoding_R encoding, U4 encoding_idx, X8616_InfoList
 	if (encoding->fields.z.width)   { plan.flags |= x8616_plan_has_z;   plan.z_shift   = encoding->fields.z.shift; }
 	if (encoding->fields.reg.width) { plan.flags |= x8616_plan_has_reg; plan.reg_shift = encoding->fields.reg.shift; }
 	if (encoding->fields.sr.width)  { plan.flags |= x8616_plan_has_sr;  plan.sr_shift  = encoding->fields.sr.shift; }
-	if (encoding->fields.alu.width) {
-		plan.flags    |= x8616_plan_has_alu;
-		plan.alu_shift = encoding->fields.alu.shift;
-		if ((plan.flags & x8616_plan_has_modrm) && encoding->fields.d.width == 0)
-			plan.flags |= x8616_plan_alu_modrm;
-	}
-	if (encoding->fields.cc.width)  { plan.flags |= x8616_plan_has_cc;  plan.cc_shift  = encoding->fields.cc.shift; }
+	if (encoding->fields.alu.width) { plan.flags |= x8616_plan_has_alu;  plan.alu_shift  = encoding->fields.alu.shift; }
+	if (encoding->fields.cc.width)  { plan.flags |= x8616_plan_has_cc;   plan.cc_shift   = encoding->fields.cc.shift; }
+	if (encoding->fields.pair.width){ plan.flags |= x8616_plan_has_pair; plan.pair_shift = encoding->fields.pair.shift; }
+	plan.digit_kind = encoding->digit_kind;
+	plan.pair_kind  = encoding->pair_kind;
 
 	if (x8616_decode_gen_operand_uses_rm(encoding->operands[0]) || x8616_decode_gen_operand_uses_rm(encoding->operands[1]))
 		plan.flags |= x8616_plan_uses_rm;
@@ -336,7 +334,7 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 			<d_shift>, <w_shift>, <s_shift>, <v_shift>, <z_shift>, <reg_shift>, <sr_shift>,
 			{<mod_rm.bits>, <mod_rm.mask>},
 			{<post_opcode.bits>, <post_opcode.mask>},
-			<alu_shift>, <cc_shift>,
+			<alu_shift>, <cc_shift>, <pair_shift>, <digit_kind>, <pair_kind>,
 		},\n
 	);
 	KTL_Slot_Str8 tbl[] = {
@@ -362,6 +360,9 @@ x8616_decode_gen_emit_plan(Str8Gen_R out, X8616_DecodePlan_R plan) { defer_rewin
 		entry("post_opcode.mask", hex_u1(plan->post_opcode.mask)),
 		entry("alu_shift",        dec(plan->alu_shift)),
 		entry("cc_shift",         dec(plan->cc_shift)),
+		entry("pair_shift",       dec(plan->pair_shift)),
+		entry("digit_kind",       dec(plan->digit_kind)),
+		entry("pair_kind",        dec(plan->pair_kind)),
 	}; 
 	str8gen_append_fmt(out, template, ktl_str8_from_arr(tbl));
 }}
