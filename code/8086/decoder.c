@@ -449,6 +449,9 @@ x8616_decode_one_plex(X8616_DecodePlex* plex)
 	plex->instruction.d             = (plan->flags & x8616_plan_has_d) ? plex->d : x8616_d_rm_dst;
 	plex->instruction.w             = (plan->flags & x8616_plan_has_w) ? plex->w : x8616_w_byte;
 	plex->instruction.has_mod_rm    = (plan->flags & x8616_plan_has_modrm) != 0;
+	plex->instruction.header        = plex->header;
+	plex->instruction.mod_rm        = plex->mod_rm;
+	plex->instruction.post_opcode   = plex->post_opcode;
 
 	U4 total_required  = prefix_at + plex->body_required;
 	U4 total_available = plex->source_size;

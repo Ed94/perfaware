@@ -74,6 +74,9 @@ typedef Struct_(X8616_DecodedInstruction) {
 	X8616_ALU             alu;
 	X8616_Condition       cc;
 	B1 has_mod_rm;
+	U1 header;
+	U1 mod_rm;
+	U1 post_opcode;
 	U1 size;
 	U1 size_required;
 };

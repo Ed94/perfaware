@@ -38,6 +38,10 @@ typedef Enum_(U1, X8616_InfoCode) {
 	x8616_info_parse_invalid_record       = 0x13,
 	x8616_info_parse_unsupported_form     = 0x14,
 
+	x8616_info_encode_bad_request         = 0x15,
+	x8616_info_encode_invalid_record      = 0x16,
+	x8616_info_encode_output_full         = 0x17,
+
 	x8616_info_count,
 };
 
@@ -78,6 +82,9 @@ RO_ global Str8 x8616_info_templates[x8616_info_count] = {
 	[x8616_info_parse_output_full]          = slit8("Parse output is full: capacity <expected>, produced <actual>."),
 	[x8616_info_parse_invalid_record]       = slit8("Parse record at <offset> is not a valid instruction (op <actual>)."),
 	[x8616_info_parse_unsupported_form]     = slit8("Parse record at <offset> has an unsupported form (op <actual>)."),
+	[x8616_info_encode_bad_request]         = slit8("Encode request is missing instructions, output, or info arena."),
+	[x8616_info_encode_invalid_record]      = slit8("Encode record <offset> is invalid or truncated (op <actual>)."),
+	[x8616_info_encode_output_full]         = slit8("Encode output is full at record <offset>: capacity <expected>, produced <actual>."),
 };
 
 typedef Struct_(X8616_InfoList) {
@@ -119,4 +126,16 @@ FI_ void x8616_info_push(FArena_R scratch
 	msg->actual        = actual;
 	msg->text          = x8616_info_template(code);
 	sll_queue_push_n(msgs->first, msgs->last, msg, next);
+}
+
+typedef Struct_(X8616_InfoTextValues) { Str8 offset; Str8 expected; Str8 actual; };
+
+FI_ Str8
+x8616_info_render(Slice output, X8616_InfoMsg_R msg, X8616_InfoTextValues values) {
+	KTL_Slot_Str8 slots[] = {
+		{ ktl_str8_key("offset"),   values.offset   },
+		{ ktl_str8_key("expected"), values.expected },
+		{ ktl_str8_key("actual"),   values.actual   },
+	};
+	return str8_fmt_ktl_buf(output, ktl_str8_from_arr(slots), msg->text);
 }
